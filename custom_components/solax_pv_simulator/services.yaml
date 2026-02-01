@@ -1,0 +1,82 @@
+set_weather:
+  name: Set Weather
+  description: Set the simulated weather condition (affects PV production)
+  fields:
+    weather:
+      name: Weather
+      description: Weather condition to simulate
+      required: true
+      example: sunny
+      selector:
+        select:
+          options:
+            - sunny
+            - partlycloudy
+            - cloudy
+            - rainy
+            - night
+
+set_simulated_hour:
+  name: Set Simulated Hour
+  description: Set the simulated hour of day (0-24, affects PV production curve)
+  fields:
+    hour:
+      name: Hour
+      description: Hour of day (0-24)
+      required: true
+      example: 12
+      selector:
+        number:
+          min: 0
+          max: 24
+          step: 0.5
+          mode: slider
+
+use_real_time:
+  name: Use Real Time
+  description: Enable or disable real-time simulation (when disabled, use set_simulated_hour)
+  fields:
+    enabled:
+      name: Enabled
+      description: Whether to use real time
+      default: true
+      selector:
+        boolean:
+
+set_battery_soc:
+  name: Set Battery SOC
+  description: Set the battery state of charge directly (for testing)
+  fields:
+    soc:
+      name: SOC
+      description: Battery state of charge (0-100%)
+      required: true
+      example: 50
+      selector:
+        number:
+          min: 0
+          max: 100
+          step: 1
+          unit_of_measurement: "%"
+          mode: slider
+
+set_house_load:
+  name: Set House Load
+  description: Set a fixed house load (overrides automatic load simulation)
+  fields:
+    load:
+      name: Load
+      description: House load in watts
+      required: true
+      example: 1000
+      selector:
+        number:
+          min: 0
+          max: 10000
+          step: 100
+          unit_of_measurement: "W"
+          mode: box
+
+reset_energy_counters:
+  name: Reset Energy Counters
+  description: Reset the daily energy counter (simulates day change)

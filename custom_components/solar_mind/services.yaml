@@ -1,0 +1,69 @@
+charge_battery_from_grid:
+  name: Charge Battery from Grid
+  description: Force charge the battery from the grid at a specified power level.
+  fields:
+    power_w:
+      name: Power (W)
+      description: Charging power in watts. If not specified, uses configured maximum.
+      required: false
+      example: 3000
+      selector:
+        number:
+          min: 0
+          max: 15000
+          step: 100
+          unit_of_measurement: W
+    duration_seconds:
+      name: Duration (seconds)
+      description: How long to charge. If not specified, uses configured autorepeat duration.
+      required: false
+      example: 3600
+      selector:
+        number:
+          min: 60
+          max: 86400
+          step: 60
+          unit_of_measurement: s
+
+discharge_battery_to_grid:
+  name: Discharge Battery to Grid
+  description: Discharge the battery to the grid (sell electricity) at a specified power level.
+  fields:
+    power_w:
+      name: Power (W)
+      description: Discharge power in watts. If not specified, uses configured maximum.
+      required: false
+      example: 3000
+      selector:
+        number:
+          min: 0
+          max: 15000
+          step: 100
+          unit_of_measurement: W
+    duration_seconds:
+      name: Duration (seconds)
+      description: How long to discharge. If not specified, uses configured autorepeat duration.
+      required: false
+      example: 3600
+      selector:
+        number:
+          min: 60
+          max: 86400
+          step: 60
+          unit_of_measurement: s
+
+set_self_use:
+  name: Set Self Use Mode
+  description: Set the inverter to self-use mode where it automatically manages battery charge/discharge based on PV production and house load.
+
+set_battery_for_house:
+  name: Set Battery for House
+  description: Use the battery to power the house (alias for self-use mode).
+
+set_house_use_grid:
+  name: Set House Use Grid
+  description: Set the house to use grid power and prevent battery discharge (preserve battery).
+
+apply_strategy:
+  name: Apply Strategy
+  description: Immediately run the active strategy and apply its recommendation. Useful for testing or forcing a strategy update.

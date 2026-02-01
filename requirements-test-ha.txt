@@ -1,0 +1,7 @@
+# Optional: test deps for Home Assistant config flow tests (test_config_flow.py)
+# Kept in sync with pyproject.toml [project.optional-dependencies] test-ha
+# Install: pip install -r requirements-test.txt -r requirements-test-ha.txt   OR   pip install -e ".[test-ha]"
+# Requires ~500MB+ (homeassistant and deps). Then: pytest tests/test_config_flow.py -v
+
+-r requirements-test.txt
+pytest-homeassistant-custom-component

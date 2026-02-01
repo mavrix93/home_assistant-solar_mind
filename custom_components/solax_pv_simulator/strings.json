@@ -1,0 +1,130 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Solax PV Simulator Setup",
+        "description": "Configure the simulated Solax PV inverter and battery system.",
+        "data": {
+          "name": "Instance Name",
+          "battery_capacity": "Battery Capacity",
+          "max_pv_power": "Max PV Power",
+          "max_charge_power": "Max Charge Power",
+          "max_discharge_power": "Max Discharge Power",
+          "initial_soc": "Initial Battery SOC"
+        },
+        "data_description": {
+          "name": "Name for this simulator instance",
+          "battery_capacity": "Total battery capacity in Wh",
+          "max_pv_power": "Maximum PV array power in W",
+          "max_charge_power": "Maximum battery charging power in W",
+          "max_discharge_power": "Maximum battery discharging power in W",
+          "initial_soc": "Initial battery state of charge"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Failed to connect",
+      "invalid_auth": "Invalid authentication",
+      "unknown": "Unexpected error"
+    },
+    "abort": {
+      "already_configured": "Device is already configured"
+    }
+  },
+  "entity": {
+    "button": {
+      "remotecontrol_trigger": {
+        "name": "Remote Control Trigger"
+      },
+      "passive_update_battery_charge_discharge": {
+        "name": "Passive Update Battery"
+      }
+    },
+    "number": {
+      "remotecontrol_active_power": {
+        "name": "Remote Control Active Power"
+      },
+      "remotecontrol_autorepeat_duration": {
+        "name": "Remote Control Autorepeat Duration"
+      },
+      "passive_desired_grid_power": {
+        "name": "Passive Desired Grid Power"
+      }
+    },
+    "select": {
+      "remotecontrol_power_control": {
+        "name": "Remote Control Power Control"
+      },
+      "energy_storage_mode": {
+        "name": "Energy Storage Mode"
+      }
+    },
+    "sensor": {
+      "battery_soc": {
+        "name": "Battery SOC"
+      },
+      "battery_power": {
+        "name": "Battery Power"
+      },
+      "battery_temperature": {
+        "name": "Battery Temperature"
+      },
+      "pv_power": {
+        "name": "PV Power"
+      },
+      "pv_voltage": {
+        "name": "PV Voltage"
+      },
+      "pv_current": {
+        "name": "PV Current"
+      },
+      "grid_power": {
+        "name": "Grid Power"
+      },
+      "grid_voltage": {
+        "name": "Grid Voltage"
+      },
+      "grid_frequency": {
+        "name": "Grid Frequency"
+      },
+      "house_load": {
+        "name": "House Load"
+      },
+      "inverter_temperature": {
+        "name": "Inverter Temperature"
+      },
+      "energy_today": {
+        "name": "Energy Today"
+      },
+      "energy_total": {
+        "name": "Energy Total"
+      }
+    }
+  },
+  "services": {
+    "set_weather": {
+      "name": "Set Weather",
+      "description": "Set the simulated weather condition"
+    },
+    "set_simulated_hour": {
+      "name": "Set Simulated Hour",
+      "description": "Set the simulated hour of day"
+    },
+    "use_real_time": {
+      "name": "Use Real Time",
+      "description": "Enable or disable real-time simulation"
+    },
+    "set_battery_soc": {
+      "name": "Set Battery SOC",
+      "description": "Set the battery state of charge"
+    },
+    "set_house_load": {
+      "name": "Set House Load",
+      "description": "Set a fixed house load"
+    },
+    "reset_energy_counters": {
+      "name": "Reset Energy Counters",
+      "description": "Reset the energy counters"
+    }
+  }
+}

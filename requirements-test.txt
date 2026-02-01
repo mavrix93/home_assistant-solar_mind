@@ -1,0 +1,9 @@
+# Test dependencies for Solar Mind (Python 3.11+)
+# Kept in sync with pyproject.toml [project.optional-dependencies] test
+# Install: pip install -r requirements-test.txt   OR   pip install -e ".[test]"
+#
+# Unit tests run without Home Assistant. For config flow tests see requirements-test-ha.txt
+
+pytest>=8.0.0
+pytest-asyncio>=0.23.0
+pytest-cov>=4.0.0
