@@ -8,6 +8,7 @@ from typing import Callable
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.event import async_track_time_interval
+from homeassistant.util.dt import utcnow
 
 from .simulator_core import SimulatorState, SolaxSimulatorCore
 
@@ -32,7 +33,7 @@ class SolaxSimulator(SolaxSimulatorCore):
     async def async_start(self) -> None:
         """Start the simulator."""
         _LOGGER.info("Starting Solax PV Simulator")
-        self._last_update = datetime.now()
+        self._last_update = utcnow()
         self._unsub_timer = async_track_time_interval(
             self.hass,
             self._async_update,

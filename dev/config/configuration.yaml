@@ -1,0 +1,12 @@
+# Minimal Home Assistant configuration for development sandbox
+# Most configuration is handled via UI / .storage
+
+default_config:
+
+# Enable logging for custom components
+logger:
+  default: info
+  logs:
+    custom_components.solar_mind: debug
+    custom_components.solax_pv_simulator: debug
+    custom_components.cz_energy_spot_prices: debug

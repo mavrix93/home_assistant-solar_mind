@@ -5,7 +5,7 @@
   "config_flow": true,
   "dependencies": [],
   "documentation": "https://github.com/martinvo/home_assistant-solar_mind",
-  "integration_type": "virtual",
+  "integration_type": "hub",
   "iot_class": "local_push",
   "version": "1.0.0"
 }

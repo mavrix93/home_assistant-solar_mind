@@ -324,6 +324,95 @@ Use the same `.env` as for Solar Mind (DEPLOY_HOST, DEPLOY_PATH), or pass `-h` /
 4. Add "Solar Mind" integration
 5. Select the simulator entities during Solar Mind setup
 
+## Local Sandbox (Docker)
+
+For local development and testing, you can run a complete Home Assistant instance with Docker. The sandbox comes pre-configured with:
+
+- Default user (`dev` / `dev`)
+- Solax PV Simulator already installed
+- Default dashboard with simulator entities
+
+### Quick Start
+
+```bash
+# 1. Seed the storage (creates user, installs simulator, sets up dashboard)
+#    Requires bcrypt: pip install bcrypt
+./dev/seed.sh
+
+# 2. Start Home Assistant
+docker-compose -f dev/docker-compose.yml up -d
+
+# 3. Open in browser
+open http://localhost:8123
+
+# 4. Login with: dev / dev
+```
+
+### How It Works
+
+The `dev/` directory contains:
+
+- `docker-compose.yml` – Runs the official Home Assistant Container image
+- `config/configuration.yaml` – Minimal HA config with debug logging enabled
+- `seed_storage.py` – Creates `.storage` files (user, integrations, dashboard)
+- `seed.sh` – Wrapper script to run the seed
+
+The repo's `custom_components/` is mounted read-only into the container, so code changes take effect after restarting HA.
+
+### Common Commands
+
+```bash
+# Start
+docker-compose -f dev/docker-compose.yml up -d
+
+# View logs
+docker-compose -f dev/docker-compose.yml logs -f
+
+# Restart (after code changes)
+docker-compose -f dev/docker-compose.yml restart
+
+# Stop
+docker-compose -f dev/docker-compose.yml down
+
+# Reset (delete all state, re-seed)
+rm -rf dev/config/.storage
+./dev/seed.sh
+docker-compose -f dev/docker-compose.yml up -d
+```
+
+### Adding Solar Mind
+
+1. Open http://localhost:8123 and log in
+2. Go to **Settings → Devices & Services → Add Integration**
+3. Search for "Solar Mind"
+4. Select the Solax Simulator entities during setup:
+   - Remote Control Power Control: `select.solax_simulator_remotecontrol_power_control`
+   - Remote Control Active Power: `number.solax_simulator_remotecontrol_active_power`
+   - Remote Control Trigger: `button.solax_simulator_remotecontrol_trigger`
+   - Battery SOC: `sensor.solax_simulator_battery_soc`
+5. For price sensor, create a helper (`input_number`) or use a mock sensor
+
+### Re-seeding (e.g. after fixing welcome/onboarding)
+
+If you still see the welcome/onboarding page after starting HA, or if HA logs **KeyError: 'created_at'** when loading config entries (old storage format):
+
+1. Stop the container: `docker-compose -f dev/docker-compose.yml down`
+2. Remove existing storage: `rm -rf dev/config/.storage`
+3. If you have a stray `dev/dev/` folder (from an older compose path bug), remove it so HA uses the correct config: `rm -rf dev/dev`
+4. Install bcrypt if needed: `pip install bcrypt` (or in your venv)
+5. Re-run the seed: `./dev/seed.sh`
+6. Start again: `docker-compose -f dev/docker-compose.yml up -d`
+
+The compose file mounts `dev/config` as `/config` (paths are relative to the `dev/` directory). The seed script writes to `dev/config/.storage`, so the same directory is used.
+
+### Notes
+
+- The seed script requires **bcrypt** (`pip install bcrypt`) for HA-compatible password hashing.
+- Use `docker-compose` (with hyphen). If you have Docker Compose V2 only, use `docker compose` (with space) instead.
+- The default password (`dev`) is for development only – don't expose this instance to the internet
+- On Apple Silicon Macs, the official HA image works natively (multi-arch)
+- If you see jemalloc errors on ARM, add `DISABLE_JEMALLOC: true` to environment in docker-compose.yml
+
 ## Dependencies
 
 This project uses three separate dependency mechanisms; keep them consistent when adding or changing deps.

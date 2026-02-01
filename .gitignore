@@ -55,3 +55,21 @@ Thumbs.db
 *.tmp
 .cache/
 .venv/
+
+# Cloned HACS integration for dev sandbox (installed by seed_storage.py)
+custom_components/cz_energy_spot_prices/
+
+# Home Assistant dev sandbox (keep configuration.yaml, ignore HA-generated state)
+dev/config/.storage/
+dev/config/secrets.yaml
+dev/config/home-assistant.log
+dev/config/home-assistant_v2.db
+dev/config/home-assistant_v2.db-shm
+dev/config/home-assistant_v2.db-wal
+dev/config/.HA_VERSION
+dev/config/automations.yaml
+dev/config/scripts.yaml
+dev/config/scenes.yaml
+dev/config/tts/
+dev/config/deps/
+dev/config/.cloud/

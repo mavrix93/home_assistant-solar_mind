@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
@@ -80,7 +80,7 @@ class SolarMindCoordinator(DataUpdateCoordinator[SolarMindData]):
         """Fetch data and run strategy."""
         try:
             data = SolarMindData()
-            data.last_update = datetime.now()
+            data.last_update = datetime.now(timezone.utc)
             
             # Fetch price data
             data.prices = await self._fetch_prices()
@@ -108,7 +108,7 @@ class SolarMindCoordinator(DataUpdateCoordinator[SolarMindData]):
             _LOGGER.error("Error updating Solar Mind data: %s", err)
             # Return data with error but don't fail completely
             data = SolarMindData()
-            data.last_update = datetime.now()
+            data.last_update = datetime.now(timezone.utc)
             data.last_error = str(err)
             return data
 
@@ -281,20 +281,31 @@ class SolarMindCoordinator(DataUpdateCoordinator[SolarMindData]):
         except Exception as e:
             _LOGGER.error("Failed to execute strategy: %s", e)
 
+    def _entity_available(self, entity_id: str) -> bool:
+        """Return True if the entity exists and is available."""
+        state = self.hass.states.get(entity_id)
+        return state is not None and state.state not in (STATE_UNAVAILABLE, STATE_UNKNOWN)
+
     async def _execute_modbus_remote(self, output: StrategyOutput) -> None:
         """Execute strategy using Modbus remote control entities."""
         # Set power control mode
         mode_entity_id = self.entry.data.get(CONF_REMOTECONTROL_POWER_CONTROL)
         if mode_entity_id and output.mode:
-            await self.hass.services.async_call(
-                "select",
-                "select_option",
-                {"entity_id": mode_entity_id, "option": output.mode},
-            )
+            if not self._entity_available(mode_entity_id):
+                _LOGGER.debug(
+                    "Skipping select_option: entity %s not available yet",
+                    mode_entity_id,
+                )
+            else:
+                await self.hass.services.async_call(
+                    "select",
+                    "select_option",
+                    {"entity_id": mode_entity_id, "option": output.mode},
+                )
         
         # Set active power if specified
         power_entity_id = self.entry.data.get(CONF_REMOTECONTROL_ACTIVE_POWER)
-        if power_entity_id and output.power_w is not None:
+        if power_entity_id and output.power_w is not None and self._entity_available(power_entity_id):
             await self.hass.services.async_call(
                 "number",
                 "set_value",
@@ -306,7 +317,7 @@ class SolarMindCoordinator(DataUpdateCoordinator[SolarMindData]):
         duration = output.duration_seconds or self.entry.options.get(
             CONF_AUTOREPEAT_DURATION, DEFAULT_AUTOREPEAT_DURATION
         )
-        if duration_entity_id:
+        if duration_entity_id and self._entity_available(duration_entity_id):
             await self.hass.services.async_call(
                 "number",
                 "set_value",
@@ -315,7 +326,7 @@ class SolarMindCoordinator(DataUpdateCoordinator[SolarMindData]):
         
         # Trigger the remote control
         trigger_entity_id = self.entry.data.get(CONF_REMOTECONTROL_TRIGGER)
-        if trigger_entity_id:
+        if trigger_entity_id and self._entity_available(trigger_entity_id):
             await self.hass.services.async_call(
                 "button",
                 "press",
@@ -327,7 +338,7 @@ class SolarMindCoordinator(DataUpdateCoordinator[SolarMindData]):
         # Set desired grid power
         # Positive = import from grid, Negative = export to grid
         power_entity_id = self.entry.data.get(CONF_PASSIVE_DESIRED_GRID_POWER)
-        if power_entity_id and output.power_w is not None:
+        if power_entity_id and output.power_w is not None and self._entity_available(power_entity_id):
             await self.hass.services.async_call(
                 "number",
                 "set_value",
@@ -336,7 +347,7 @@ class SolarMindCoordinator(DataUpdateCoordinator[SolarMindData]):
         
         # Trigger the update
         trigger_entity_id = self.entry.data.get(CONF_PASSIVE_UPDATE_TRIGGER)
-        if trigger_entity_id:
+        if trigger_entity_id and self._entity_available(trigger_entity_id):
             await self.hass.services.async_call(
                 "button",
                 "press",
