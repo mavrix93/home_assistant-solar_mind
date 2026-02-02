@@ -13,7 +13,8 @@ This document is aimed at **senior Python developers** who are new to the Home A
 5. [Solar Plant and Inverter Concepts](#5-solar-plant-and-inverter-concepts)
 6. [Solax Entities: What They Are and What They Do](#6-solax-entities-what-they-are-and-what-they-do)
 7. [How Solar Charging Works in This Project](#7-how-solar-charging-works-in-this-project)
-8. [Further Reading](#8-further-reading)
+8. [Decision Flow Charts](#8-decision-flow-charts)
+9. [Further Reading](#9-further-reading)
 
 ---
 
@@ -351,7 +352,335 @@ The inverter then applies that mode and setpoint until the duration expires or a
 
 ---
 
-## 8. Further Reading
+## 8. Decision Flow Charts
+
+This section provides visual flowcharts to help you understand how Solar Mind makes decisions about when to charge, discharge, or use self-use mode. These diagrams show exactly which parameters influence each decision.
+
+### 8.1 High-Level Coordinator Update Cycle
+
+Every update cycle (default: 5 minutes), the coordinator fetches data and executes the strategy:
+
+```mermaid
+flowchart TB
+    subgraph Coordinator["Coordinator Update Cycle"]
+        START([Timer Trigger]) --> FETCH_PRICES[Fetch Price Data]
+        FETCH_PRICES --> FETCH_WEATHER[Fetch Weather Forecast]
+        FETCH_WEATHER --> FETCH_SOLAX[Fetch Solax State]
+        FETCH_SOLAX --> GET_STRATEGY[Determine Active Strategy]
+        GET_STRATEGY --> RUN_STRATEGY[Run Strategy]
+        RUN_STRATEGY --> EXECUTE[Execute on Solax]
+        EXECUTE --> UPDATE_SENSORS[Update Sensors]
+        UPDATE_SENSORS --> END([Wait for Next Cycle])
+    end
+    
+    subgraph Inputs["Input Data Sources"]
+        PRICE_SENSOR[(Price Sensor<br/>Czech OTE / Nord Pool / Generic)]
+        WEATHER_ENTITY[(Weather Entity<br/>Hourly Forecast)]
+        SOLAX_ENTITIES[(Solax Entities<br/>SOC, Mode, Power)]
+        STRATEGY_SELECTOR[(Strategy Selector<br/>input_select Entity)]
+    end
+    
+    PRICE_SENSOR --> FETCH_PRICES
+    WEATHER_ENTITY --> FETCH_WEATHER
+    SOLAX_ENTITIES --> FETCH_SOLAX
+    STRATEGY_SELECTOR --> GET_STRATEGY
+    
+    subgraph Options["Configuration Options"]
+        CONFIG[("Options:<br/>• update_interval<br/>• fallback_strategy<br/>• price thresholds<br/>• SOC limits<br/>• power limits<br/>• charge window")]
+    end
+    
+    CONFIG --> RUN_STRATEGY
+```
+
+### 8.2 Strategy Selection Flow
+
+How the active strategy is determined from the selector entity or fallback:
+
+```mermaid
+flowchart TB
+    START([Get Active Strategy]) --> CHECK_SELECTOR{Strategy Selector<br/>Entity Configured?}
+    
+    CHECK_SELECTOR -->|No| USE_FALLBACK[Use Fallback Strategy]
+    CHECK_SELECTOR -->|Yes| READ_STATE[Read Selector State]
+    
+    READ_STATE --> STATE_VALID{State Available<br/>& Valid?}
+    
+    STATE_VALID -->|No| USE_FALLBACK
+    STATE_VALID -->|Yes| MATCH_KEY{Match Strategy Key}
+    
+    MATCH_KEY -->|"spot_price_weather"| SPOT[Spot Price + Weather]
+    MATCH_KEY -->|"time_of_use"| TOU[Time of Use]
+    MATCH_KEY -->|"self_use_only"| SELF[Self Use Only]
+    MATCH_KEY -->|"manual"| MANUAL[Manual]
+    MATCH_KEY -->|"Unknown"| USE_FALLBACK
+    
+    USE_FALLBACK --> FALLBACK_KEY{Fallback Strategy<br/>from Options}
+    
+    FALLBACK_KEY -->|Default| SPOT
+    FALLBACK_KEY -->|Configured| SELECTED[Selected Strategy]
+    
+    SPOT --> RETURN([Return Strategy])
+    TOU --> RETURN
+    SELF --> RETURN
+    MANUAL --> RETURN
+    SELECTED --> RETURN
+```
+
+### 8.3 Spot Price + Weather Strategy Decision Flow
+
+This is the main optimization strategy. It uses prices, weather, time, and battery state to make decisions:
+
+```mermaid
+flowchart TB
+    START([Strategy Input]) --> CHECK_PRICE{Current Price<br/>Available?}
+    
+    CHECK_PRICE -->|No| FALLBACK_TOU[Fallback to<br/>Time-of-Use Logic]
+    CHECK_PRICE -->|Yes| CALC_CONDITIONS[Calculate Conditions]
+    
+    subgraph Conditions["Evaluate Conditions"]
+        CALC_CONDITIONS --> C1{price ≤<br/>charge_threshold?}
+        C1 -->|Yes| CHEAP[price_is_cheap = true]
+        C1 -->|No| NOT_CHEAP[price_is_cheap = false]
+        
+        CALC_CONDITIONS --> C2{price ≥<br/>discharge_threshold?}
+        C2 -->|Yes| EXPENSIVE[price_is_expensive = true]
+        C2 -->|No| NOT_EXPENSIVE[price_is_expensive = false]
+        
+        CALC_CONDITIONS --> C3{hour in<br/>charge_window?}
+        C3 -->|Yes| IN_WINDOW[in_charge_window = true]
+        C3 -->|No| OUT_WINDOW[in_charge_window = false]
+        
+        CALC_CONDITIONS --> C4{solar_potential<br/>≥ 50%?}
+        C4 -->|Yes| GOOD_SOLAR[good_solar = true]
+        C4 -->|No| BAD_SOLAR[good_solar = false]
+    end
+    
+    CHEAP --> DECISION1
+    NOT_CHEAP --> DECISION1
+    EXPENSIVE --> DECISION1
+    NOT_EXPENSIVE --> DECISION1
+    IN_WINDOW --> DECISION1
+    OUT_WINDOW --> DECISION1
+    GOOD_SOLAR --> DECISION1
+    BAD_SOLAR --> DECISION1
+    
+    DECISION1{price_is_cheap<br/>AND<br/>in_charge_window?}
+    
+    DECISION1 -->|Yes| CHECK_SOC_CHARGE{SOC ≥ max_soc?}
+    CHECK_SOC_CHARGE -->|Yes| SELF_USE_FULL["SELF_USE<br/>Battery full"]
+    CHECK_SOC_CHARGE -->|No| CHARGING["CHARGING<br/>Grid Control<br/>power = max_charge_power"]
+    
+    DECISION1 -->|No| DECISION2{price_is_expensive<br/>AND<br/>discharge_allowed?}
+    
+    DECISION2 -->|Yes| CHECK_SOC_DISCHARGE{SOC ≤ min_soc?}
+    CHECK_SOC_DISCHARGE -->|Yes| HOUSE_GRID_LOW["HOUSE_FROM_GRID<br/>Battery too low"]
+    CHECK_SOC_DISCHARGE -->|No| DISCHARGING["DISCHARGING<br/>Battery Control<br/>power = -max_discharge_power"]
+    
+    DECISION2 -->|No| DECISION3{good_solar OR<br/>SOC > min_soc?}
+    
+    DECISION3 -->|Yes| SELF_USE["SELF_USE<br/>Use battery for house"]
+    DECISION3 -->|No| HOUSE_GRID["HOUSE_FROM_GRID<br/>Preserve battery"]
+    
+    FALLBACK_TOU --> TOU_CHECK{in_charge_window?}
+    TOU_CHECK -->|Yes| TOU_SOC{SOC ≥ max_soc?}
+    TOU_SOC -->|Yes| SELF_USE_TOU[SELF_USE]
+    TOU_SOC -->|No| CHARGING_TOU[CHARGING]
+    TOU_CHECK -->|No| SELF_USE_TOU2[SELF_USE]
+    
+    CHARGING --> OUTPUT([Strategy Output])
+    DISCHARGING --> OUTPUT
+    SELF_USE --> OUTPUT
+    SELF_USE_FULL --> OUTPUT
+    HOUSE_GRID --> OUTPUT
+    HOUSE_GRID_LOW --> OUTPUT
+    CHARGING_TOU --> OUTPUT
+    SELF_USE_TOU --> OUTPUT
+    SELF_USE_TOU2 --> OUTPUT
+```
+
+### 8.4 Spot Price Strategy - Parameter Reference
+
+Key parameters that determine the Spot Price + Weather strategy decisions:
+
+| Parameter | Config Key | Default | Effect on Decision |
+|-----------|------------|---------|-------------------|
+| **Charge Price Threshold** | `charge_price_threshold` | 0.05 | If current_price ≤ threshold → eligible for charging |
+| **Discharge Price Threshold** | `discharge_price_threshold` | 0.15 | If current_price ≥ threshold → eligible for discharging |
+| **Charge Window Start** | `charge_window_start` | 22 (10 PM) | Charging only allowed from this hour |
+| **Charge Window End** | `charge_window_end` | 6 (6 AM) | Charging only allowed until this hour |
+| **Min SOC** | `min_soc` | 10% | Battery won't discharge below this level |
+| **Max SOC** | `max_soc` | 95% | Battery won't charge above this level |
+| **Discharge Allowed** | `discharge_allowed` | false | Must be true to sell to grid |
+| **Max Charge Power** | `max_charge_power` | 3000W | Power setpoint for charging |
+| **Max Discharge Power** | `max_discharge_power` | 3000W | Power setpoint for discharging |
+
+### 8.5 Time of Use Strategy Decision Flow
+
+A simpler strategy based only on time windows, ignoring spot prices:
+
+```mermaid
+flowchart TB
+    START([Strategy Input]) --> GET_HOUR[Get Current Hour]
+    
+    GET_HOUR --> CHECK_WINDOW{Hour in Charge Window?<br/>charge_window_start to charge_window_end}
+    
+    CHECK_WINDOW -->|Yes| CHECK_SOC{SOC ≥ max_soc?}
+    
+    CHECK_SOC -->|Yes| SELF_USE_FULL["SELF_USE<br/>Battery already full"]
+    CHECK_SOC -->|No| CHARGING["CHARGING<br/>Grid Control<br/>power = max_charge_power"]
+    
+    CHECK_WINDOW -->|No| CHECK_DISCHARGE{discharge_allowed?}
+    
+    CHECK_DISCHARGE -->|Yes| SELF_USE["SELF_USE<br/>Battery available for house"]
+    CHECK_DISCHARGE -->|No| HOUSE_GRID["HOUSE_FROM_GRID<br/>No Discharge mode"]
+    
+    CHARGING --> OUTPUT([Strategy Output])
+    SELF_USE --> OUTPUT
+    SELF_USE_FULL --> OUTPUT
+    HOUSE_GRID --> OUTPUT
+    
+    subgraph Parameters["Key Parameters"]
+        P1["charge_window_start<br/>(default: 22:00)"]
+        P2["charge_window_end<br/>(default: 06:00)"]
+        P3["max_soc<br/>(default: 95%)"]
+        P4["discharge_allowed<br/>(default: false)"]
+        P5["max_charge_power<br/>(default: 3000W)"]
+    end
+```
+
+### 8.6 Self-Use Only and Manual Strategies
+
+These are simple strategies with minimal decision logic:
+
+```mermaid
+flowchart LR
+    subgraph SelfUseOnly["Self Use Only Strategy"]
+        SU_START([Input]) --> SU_OUTPUT["Always returns:<br/>SELF_USE<br/>Enabled Self Use mode"]
+    end
+    
+    subgraph Manual["Manual Strategy"]
+        M_START([Input]) --> M_OUTPUT["Always returns:<br/>IDLE<br/>Disabled mode<br/>(no commands sent)"]
+    end
+```
+
+### 8.7 Strategy Output to Solax Execution Flow
+
+How the strategy output is translated into Solax commands:
+
+```mermaid
+flowchart TB
+    START([Strategy Output]) --> CHECK_STATUS{Status is<br/>ERROR or IDLE?}
+    
+    CHECK_STATUS -->|Yes| SKIP[Skip Execution<br/>No commands sent]
+    CHECK_STATUS -->|No| CHECK_TYPE{Device Type?}
+    
+    CHECK_TYPE -->|Modbus Remote| MODBUS_EXEC
+    CHECK_TYPE -->|Passive Sofar| PASSIVE_EXEC
+    
+    subgraph MODBUS_EXEC["Modbus Remote Execution"]
+        M1[Set Power Control Mode<br/>select.select_option] --> M2[Set Active Power<br/>number.set_value]
+        M2 --> M3[Set Autorepeat Duration<br/>number.set_value]
+        M3 --> M4[Press Trigger Button<br/>button.press]
+    end
+    
+    subgraph PASSIVE_EXEC["Passive Sofar Execution"]
+        P1[Set Desired Grid Power<br/>number.set_value] --> P2[Press Update Trigger<br/>button.press]
+    end
+    
+    subgraph StatusToMode["Status → Solax Mode Mapping"]
+        S1["CHARGING → Enabled Grid Control<br/>power = +max_charge_power"]
+        S2["DISCHARGING → Enabled Battery Control<br/>power = -max_discharge_power"]
+        S3["SELF_USE → Enabled Self Use"]
+        S4["HOUSE_FROM_GRID → Enabled No Discharge"]
+    end
+    
+    M4 --> DONE([Execution Complete])
+    P2 --> DONE
+    SKIP --> DONE
+```
+
+### 8.8 Complete System Flow Overview
+
+End-to-end flow showing all major components:
+
+```mermaid
+flowchart TB
+    subgraph External["External Data Sources"]
+        PRICE_API[(Price API<br/>OTE/Nord Pool)]
+        WEATHER_API[(Weather API)]
+        INVERTER[(Solax Inverter<br/>or Simulator)]
+    end
+    
+    subgraph HA["Home Assistant"]
+        PRICE_SENSOR[Price Sensor Entity]
+        WEATHER_ENTITY[Weather Entity]
+        SOLAX_ENTITIES[Solax Entities<br/>SOC, Mode, Power]
+        STRATEGY_SELECT[Strategy Selector<br/>input_select]
+    end
+    
+    subgraph SolarMind["Solar Mind Integration"]
+        COORD[Coordinator<br/>DataUpdateCoordinator]
+        ADAPTER[Price Adapter<br/>Normalize prices]
+        STRATEGIES[Strategy Engine<br/>spot_price / time_of_use /<br/>self_use / manual]
+        EXECUTOR[Execution Engine<br/>Call Solax services]
+        SENSORS[Solar Mind Sensors<br/>Status, Price, Action, etc.]
+    end
+    
+    PRICE_API --> PRICE_SENSOR
+    WEATHER_API --> WEATHER_ENTITY
+    INVERTER <--> SOLAX_ENTITIES
+    
+    PRICE_SENSOR --> ADAPTER
+    ADAPTER --> COORD
+    WEATHER_ENTITY --> COORD
+    SOLAX_ENTITIES --> COORD
+    STRATEGY_SELECT --> COORD
+    
+    COORD --> STRATEGIES
+    STRATEGIES --> EXECUTOR
+    EXECUTOR --> SOLAX_ENTITIES
+    
+    COORD --> SENSORS
+    
+    subgraph User["User Interface"]
+        DASHBOARD[HA Dashboard<br/>View sensors & state]
+        SERVICES[HA Services<br/>Manual control]
+        OPTIONS[Integration Options<br/>Configure thresholds]
+    end
+    
+    SENSORS --> DASHBOARD
+    SERVICES --> EXECUTOR
+    OPTIONS --> STRATEGIES
+```
+
+### 8.9 Decision Priority Summary
+
+The Spot Price + Weather strategy evaluates conditions in this priority order:
+
+```mermaid
+flowchart TB
+    subgraph Priority["Decision Priority (Evaluated Top to Bottom)"]
+        P1["1. CHARGE from Grid<br/>Conditions: price ≤ charge_threshold AND in_charge_window AND SOC < max_soc"]
+        P2["2. DISCHARGE to Grid<br/>Conditions: price ≥ discharge_threshold AND discharge_allowed AND SOC > min_soc"]
+        P3["3. SELF USE<br/>Conditions: good_solar_forecast OR SOC > min_soc"]
+        P4["4. HOUSE FROM GRID<br/>Default: preserve battery when no other condition met"]
+        
+        P1 --> P2
+        P2 --> P3
+        P3 --> P4
+    end
+    
+    subgraph Legend["Solax Mode Applied"]
+        L1["CHARGE → Enabled Grid Control (+power)"]
+        L2["DISCHARGE → Enabled Battery Control (-power)"]
+        L3["SELF USE → Enabled Self Use"]
+        L4["HOUSE FROM GRID → Enabled No Discharge"]
+    end
+```
+
+---
+
+## 9. Further Reading
 
 - **Home Assistant developer docs:** [developers.home-assistant.io](https://developers.home-assistant.io/)
 - **Creating an integration:** [Creating your first integration](https://developers.home-assistant.io/docs/creating_component_index/)
