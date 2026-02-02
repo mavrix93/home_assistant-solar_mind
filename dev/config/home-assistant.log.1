@@ -1,320 +1,265 @@
-2026-02-01 13:43:08.502 WARNING (SyncWorker_0) [homeassistant.loader] We found a custom integration cz_energy_spot_prices which has not been tested by Home Assistant. This component might cause stability problems, be sure to disable it if you experience issues with Home Assistant
-2026-02-01 13:43:08.504 WARNING (SyncWorker_0) [homeassistant.loader] We found a custom integration solar_mind which has not been tested by Home Assistant. This component might cause stability problems, be sure to disable it if you experience issues with Home Assistant
-2026-02-01 13:43:08.506 WARNING (SyncWorker_0) [homeassistant.loader] We found a custom integration solax_pv_simulator which has not been tested by Home Assistant. This component might cause stability problems, be sure to disable it if you experience issues with Home Assistant
-2026-02-01 13:43:09.452 INFO (MainThread) [homeassistant.setup] Setup of domain http took 0.10 seconds
-2026-02-01 13:43:09.452 INFO (MainThread) [homeassistant.setup] Setup of domain system_log took 0.10 seconds
-2026-02-01 13:43:09.452 INFO (MainThread) [homeassistant.setup] Setup of domain logger took 0.10 seconds
-2026-02-01 13:43:09.452 INFO (MainThread) [homeassistant.setup] Setting up websocket_api
-2026-02-01 13:43:09.452 INFO (MainThread) [homeassistant.setup] Setup of domain websocket_api took 0.00 seconds
-2026-02-01 13:43:09.452 INFO (MainThread) [homeassistant.setup] Setting up network
-2026-02-01 13:43:09.454 INFO (MainThread) [homeassistant.setup] Setup of domain network took 0.00 seconds
-2026-02-01 13:43:09.455 INFO (MainThread) [homeassistant.bootstrap] Setting up stage labs: {'labs'}; already set up: {}
+2026-02-02 16:13:12.083 WARNING (SyncWorker_0) [homeassistant.loader] We found a custom integration cz_energy_spot_prices which has not been tested by Home Assistant. This component might cause stability problems, be sure to disable it if you experience issues with Home Assistant
+2026-02-02 16:13:12.085 WARNING (SyncWorker_0) [homeassistant.loader] We found a custom integration solar_mind which has not been tested by Home Assistant. This component might cause stability problems, be sure to disable it if you experience issues with Home Assistant
+2026-02-02 16:13:12.087 WARNING (SyncWorker_0) [homeassistant.loader] We found a custom integration solax_pv_simulator which has not been tested by Home Assistant. This component might cause stability problems, be sure to disable it if you experience issues with Home Assistant
+2026-02-02 16:13:12.705 INFO (MainThread) [homeassistant.setup] Setting up http
+2026-02-02 16:13:12.705 INFO (MainThread) [homeassistant.setup] Setting up system_log
+2026-02-02 16:13:12.749 INFO (MainThread) [homeassistant.setup] Setup of domain logger took 0.05 seconds
+2026-02-02 16:13:12.749 INFO (MainThread) [homeassistant.setup] Setup of domain http took 0.04 seconds
+2026-02-02 16:13:12.750 INFO (MainThread) [homeassistant.setup] Setup of domain system_log took 0.04 seconds
+2026-02-02 16:13:12.750 INFO (MainThread) [homeassistant.setup] Setting up websocket_api
+2026-02-02 16:13:12.750 INFO (MainThread) [homeassistant.setup] Setup of domain websocket_api took 0.00 seconds
+2026-02-02 16:13:12.757 INFO (MainThread) [homeassistant.setup] Setting up network
+2026-02-02 16:13:12.759 INFO (MainThread) [homeassistant.setup] Setup of domain network took 0.00 seconds
+2026-02-02 16:13:12.760 INFO (MainThread) [homeassistant.bootstrap] Setting up stage labs: {'labs'}; already set up: {}
 Dependencies: {}; already set up: {}
-2026-02-01 13:43:09.455 INFO (MainThread) [homeassistant.setup] Setting up labs
-2026-02-01 13:43:09.455 INFO (MainThread) [homeassistant.setup] Setup of domain labs took 0.00 seconds
-2026-02-01 13:43:09.455 INFO (MainThread) [homeassistant.bootstrap] Setting up stage frontend: {'frontend'}; already set up: {}
-Dependencies: {'search', 'auth', 'config', 'device_automation', 'repairs', 'lovelace', 'diagnostics', 'api', 'file_upload', 'onboarding'}; already set up: {'websocket_api', 'system_log', 'http'}
-2026-02-01 13:43:09.455 INFO (MainThread) [homeassistant.setup] Setting up search
-2026-02-01 13:43:09.455 INFO (MainThread) [homeassistant.setup] Setup of domain search took 0.00 seconds
-2026-02-01 13:43:09.455 INFO (MainThread) [homeassistant.setup] Setting up api
-2026-02-01 13:43:09.456 INFO (MainThread) [homeassistant.setup] Setup of domain api took 0.00 seconds
-2026-02-01 13:43:09.456 INFO (MainThread) [homeassistant.setup] Setting up auth
-2026-02-01 13:43:09.457 INFO (MainThread) [homeassistant.setup] Setup of domain auth took 0.00 seconds
-2026-02-01 13:43:09.457 INFO (MainThread) [homeassistant.setup] Setting up config
-2026-02-01 13:43:09.459 INFO (MainThread) [homeassistant.setup] Setup of domain config took 0.00 seconds
-2026-02-01 13:43:09.459 INFO (MainThread) [homeassistant.setup] Setting up device_automation
-2026-02-01 13:43:09.459 INFO (MainThread) [homeassistant.setup] Setup of domain device_automation took 0.00 seconds
-2026-02-01 13:43:09.459 INFO (MainThread) [homeassistant.setup] Setting up diagnostics
-2026-02-01 13:43:09.460 INFO (MainThread) [homeassistant.setup] Setup of domain diagnostics took 0.00 seconds
-2026-02-01 13:43:09.460 INFO (MainThread) [homeassistant.setup] Setting up file_upload
-2026-02-01 13:43:09.460 INFO (MainThread) [homeassistant.setup] Setup of domain file_upload took 0.00 seconds
-2026-02-01 13:43:09.460 INFO (MainThread) [homeassistant.setup] Setting up onboarding
-2026-02-01 13:43:09.460 INFO (MainThread) [homeassistant.setup] Setup of domain onboarding took 0.00 seconds
-2026-02-01 13:43:09.461 INFO (MainThread) [homeassistant.setup] Setting up lovelace
-2026-02-01 13:43:09.462 INFO (MainThread) [homeassistant.setup] Setup of domain lovelace took 0.00 seconds
-2026-02-01 13:43:09.462 INFO (MainThread) [homeassistant.setup] Setting up repairs
-2026-02-01 13:43:09.462 INFO (MainThread) [homeassistant.setup] Setup of domain repairs took 0.00 seconds
-2026-02-01 13:43:09.462 INFO (MainThread) [homeassistant.setup] Setting up frontend
-2026-02-01 13:43:09.474 INFO (MainThread) [homeassistant.setup] Setup of domain frontend took 0.01 seconds
-2026-02-01 13:43:09.475 INFO (MainThread) [homeassistant.bootstrap] Setting up stage recorder: {'recorder'}; already set up: {}
+2026-02-02 16:13:12.760 INFO (MainThread) [homeassistant.setup] Setting up labs
+2026-02-02 16:13:12.760 INFO (MainThread) [homeassistant.setup] Setup of domain labs took 0.00 seconds
+2026-02-02 16:13:12.760 INFO (MainThread) [homeassistant.bootstrap] Setting up stage frontend: {'frontend'}; already set up: {}
+Dependencies: {'diagnostics', 'auth', 'repairs', 'search', 'file_upload', 'config', 'device_automation', 'onboarding', 'api', 'lovelace'}; already set up: {'system_log', 'websocket_api', 'http'}
+2026-02-02 16:13:12.760 INFO (MainThread) [homeassistant.setup] Setting up api
+2026-02-02 16:13:12.761 INFO (MainThread) [homeassistant.setup] Setup of domain api took 0.00 seconds
+2026-02-02 16:13:12.761 INFO (MainThread) [homeassistant.setup] Setting up auth
+2026-02-02 16:13:12.761 INFO (MainThread) [homeassistant.setup] Setup of domain auth took 0.00 seconds
+2026-02-02 16:13:12.762 INFO (MainThread) [homeassistant.setup] Setting up config
+2026-02-02 16:13:12.763 INFO (MainThread) [homeassistant.setup] Setup of domain config took 0.00 seconds
+2026-02-02 16:13:12.763 INFO (MainThread) [homeassistant.setup] Setting up device_automation
+2026-02-02 16:13:12.763 INFO (MainThread) [homeassistant.setup] Setup of domain device_automation took 0.00 seconds
+2026-02-02 16:13:12.763 INFO (MainThread) [homeassistant.setup] Setting up diagnostics
+2026-02-02 16:13:12.764 INFO (MainThread) [homeassistant.setup] Setup of domain diagnostics took 0.00 seconds
+2026-02-02 16:13:12.764 INFO (MainThread) [homeassistant.setup] Setting up file_upload
+2026-02-02 16:13:12.764 INFO (MainThread) [homeassistant.setup] Setup of domain file_upload took 0.00 seconds
+2026-02-02 16:13:12.764 INFO (MainThread) [homeassistant.setup] Setting up onboarding
+2026-02-02 16:13:12.764 INFO (MainThread) [homeassistant.setup] Setup of domain onboarding took 0.00 seconds
+2026-02-02 16:13:12.765 INFO (MainThread) [homeassistant.setup] Setting up lovelace
+2026-02-02 16:13:12.766 INFO (MainThread) [homeassistant.setup] Setup of domain lovelace took 0.00 seconds
+2026-02-02 16:13:12.766 INFO (MainThread) [homeassistant.setup] Setting up repairs
+2026-02-02 16:13:12.767 INFO (MainThread) [homeassistant.setup] Setup of domain repairs took 0.00 seconds
+2026-02-02 16:13:12.767 INFO (MainThread) [homeassistant.setup] Setting up search
+2026-02-02 16:13:12.767 INFO (MainThread) [homeassistant.setup] Setup of domain search took 0.00 seconds
+2026-02-02 16:13:12.774 INFO (MainThread) [homeassistant.setup] Setting up frontend
+2026-02-02 16:13:12.787 INFO (MainThread) [homeassistant.setup] Setup of domain frontend took 0.01 seconds
+2026-02-02 16:13:12.788 INFO (MainThread) [homeassistant.bootstrap] Setting up stage recorder: {'recorder'}; already set up: {}
 Dependencies: {}; already set up: {}
-2026-02-01 13:43:09.475 INFO (MainThread) [homeassistant.setup] Setting up recorder
-2026-02-01 13:43:09.495 INFO (MainThread) [homeassistant.components.http] Now listening on port 8123
-2026-02-01 13:43:09.495 INFO (MainThread) [homeassistant.setup] Setup of domain http took 0.02 seconds
-2026-02-01 13:43:09.529 WARNING (Recorder) [homeassistant.components.recorder.util] The system could not validate that the sqlite3 database at //config/home-assistant_v2.db was shutdown cleanly
-2026-02-01 13:43:09.566 WARNING (Recorder) [homeassistant.components.recorder.util] Ended unfinished session (id=9 from 2026-02-01 11:03:01.087405)
-2026-02-01 13:43:09.577 INFO (MainThread) [homeassistant.setup] Setup of domain recorder took 0.10 seconds
-2026-02-01 13:43:09.578 INFO (MainThread) [homeassistant.bootstrap] Nothing to set up in stage debugger: {'debugpy'}
-2026-02-01 13:43:09.578 INFO (MainThread) [homeassistant.bootstrap] Setting up stage zeroconf: {'zeroconf'}; already set up: {}
-Dependencies: {}; already set up: {'http', 'api', 'network', 'websocket_api'}
-2026-02-01 13:43:09.578 INFO (MainThread) [homeassistant.setup] Setting up zeroconf
-2026-02-01 13:43:09.580 INFO (MainThread) [homeassistant.components.zeroconf] Starting Zeroconf broadcast
-2026-02-01 13:43:09.580 INFO (MainThread) [homeassistant.setup] Setup of domain zeroconf took 0.00 seconds
-2026-02-01 13:43:09.581 INFO (MainThread) [homeassistant.bootstrap] Setting up stage 1: {'dhcp', 'bluetooth', 'usb', 'cloud', 'ssdp'}; already set up: {}
-Dependencies: {'stt', 'backup', 'ffmpeg', 'webhook', 'conversation', 'web_rtc', 'intent', 'wake_word', 'tts', 'assist_pipeline'}; already set up: {'auth', 'repairs', 'network', 'websocket_api', 'http'}
-2026-02-01 13:43:09.581 INFO (MainThread) [homeassistant.setup] Setting up backup
-2026-02-01 13:43:09.582 INFO (MainThread) [homeassistant.setup] Setting up webhook
-2026-02-01 13:43:09.582 INFO (MainThread) [homeassistant.setup] Setup of domain webhook took 0.00 seconds
-2026-02-01 13:43:09.587 INFO (MainThread) [homeassistant.setup] Setup of domain backup took 0.01 seconds
-2026-02-01 13:43:09.596 INFO (MainThread) [homeassistant.setup] Setting up ffmpeg
-2026-02-01 13:43:09.596 INFO (MainThread) [homeassistant.setup] Setup of domain ffmpeg took 0.00 seconds
-2026-02-01 13:43:09.609 INFO (MainThread) [homeassistant.setup] Setting up intent
-2026-02-01 13:43:09.610 INFO (MainThread) [homeassistant.setup] Setup of domain intent took 0.00 seconds
-2026-02-01 13:43:09.614 INFO (MainThread) [homeassistant.setup] Setting up wake_word
-2026-02-01 13:43:09.614 INFO (MainThread) [homeassistant.setup] Setup of domain wake_word took 0.00 seconds
-2026-02-01 13:43:09.620 INFO (MainThread) [homeassistant.setup] Setting up stt
-2026-02-01 13:43:09.621 INFO (MainThread) [homeassistant.setup] Setup of domain stt took 0.00 seconds
-2026-02-01 13:43:09.653 INFO (MainThread) [homeassistant.setup] Setting up dhcp
-2026-02-01 13:43:09.653 INFO (MainThread) [homeassistant.setup] Setup of domain dhcp took 0.00 seconds
-2026-02-01 13:43:09.674 INFO (MainThread) [homeassistant.setup] Setting up usb
-2026-02-01 13:43:09.674 INFO (MainThread) [homeassistant.setup] Setup of domain usb took 0.00 seconds
-2026-02-01 13:43:09.679 INFO (MainThread) [homeassistant.setup] Setting up web_rtc
-2026-02-01 13:43:09.679 INFO (MainThread) [homeassistant.setup] Setup of domain web_rtc took 0.00 seconds
-2026-02-01 13:43:09.719 INFO (MainThread) [homeassistant.setup] Setting up ssdp
-2026-02-01 13:43:09.728 INFO (MainThread) [homeassistant.setup] Setup of domain ssdp took 0.01 seconds
-2026-02-01 13:43:09.764 INFO (MainThread) [homeassistant.setup] Setting up tts
-2026-02-01 13:43:09.768 INFO (MainThread) [homeassistant.setup] Setup of domain tts took 0.00 seconds
-2026-02-01 13:43:09.849 INFO (MainThread) [homeassistant.setup] Setting up conversation
-2026-02-01 13:43:09.850 INFO (MainThread) [homeassistant.setup] Setup of domain conversation took 0.00 seconds
-2026-02-01 13:43:09.865 INFO (MainThread) [homeassistant.setup] Setting up bluetooth
-2026-02-01 13:43:09.942 INFO (MainThread) [homeassistant.setup] Setup of domain bluetooth took 0.08 seconds
-2026-02-01 13:43:09.952 INFO (MainThread) [homeassistant.setup] Setting up assist_pipeline
-2026-02-01 13:43:09.953 INFO (MainThread) [homeassistant.setup] Setup of domain assist_pipeline took 0.00 seconds
-2026-02-01 13:43:10.272 INFO (MainThread) [homeassistant.setup] Setting up cloud
-2026-02-01 13:43:10.276 INFO (MainThread) [homeassistant.setup] Setup of domain cloud took 0.00 seconds
-2026-02-01 13:43:10.276 INFO (MainThread) [homeassistant.bootstrap] Setting up stage 2: {'automation', 'input_number', 'cz_energy_spot_prices', 'zone', 'input_select', 'input_text', 'input_button', 'open_meteo', 'solar_mind', 'default_config', 'input_datetime', 'input_boolean', 'solax_pv_simulator', 'scene', 'analytics', 'hardware', 'mcp_server', 'timer', 'script', 'person', 'schedule', 'counter', 'application_credentials', 'tag', 'system_health'}; already set up: {'frontend', 'backup', 'labs', 'logger', 'network'}
-Dependencies: {'media_source', 'go2rtc', 'sun', 'stream', 'my', 'energy', 'mobile_app', 'logbook', 'image_upload', 'blueprint', 'camera', 'history', 'homeassistant_alerts', 'usage_prediction', 'trace', 'file'}; already set up: {'device_automation', 'diagnostics', 'tts', 'recorder', 'auth', 'config', 'backup', 'homeassistant', 'lovelace', 'web_rtc', 'stt', 'conversation', 'assist_pipeline', 'frontend', 'usb', 'system_log', 'ffmpeg', 'ssdp', 'repairs', 'webhook', 'file_upload', 'http', 'onboarding', 'search', 'dhcp', 'bluetooth', 'cloud', 'network', 'websocket_api', 'zeroconf', 'intent', 'api', 'wake_word'}
-2026-02-01 13:43:10.277 INFO (MainThread) [homeassistant.setup] Setting up scene
-2026-02-01 13:43:10.277 INFO (MainThread) [homeassistant.components.scene] Setting up homeassistant.scene
-2026-02-01 13:43:10.278 INFO (MainThread) [homeassistant.setup] Setup of domain scene took 0.00 seconds
-2026-02-01 13:43:10.278 INFO (MainThread) [homeassistant.setup] Setting up camera
-2026-02-01 13:43:10.280 INFO (MainThread) [homeassistant.setup] Setup of domain camera took 0.00 seconds
-2026-02-01 13:43:10.280 INFO (MainThread) [homeassistant.setup] Setting up blueprint
-2026-02-01 13:43:10.281 INFO (MainThread) [homeassistant.setup] Setup of domain blueprint took 0.00 seconds
-2026-02-01 13:43:10.281 INFO (MainThread) [homeassistant.setup] Setting up trace
-2026-02-01 13:43:10.281 INFO (MainThread) [homeassistant.setup] Setup of domain trace took 0.00 seconds
-2026-02-01 13:43:10.281 INFO (MainThread) [homeassistant.setup] Setting up automation
-2026-02-01 13:43:10.284 INFO (MainThread) [homeassistant.setup] Setup of domain automation took 0.00 seconds
-2026-02-01 13:43:10.284 INFO (MainThread) [homeassistant.setup] Setting up input_number
-2026-02-01 13:43:10.286 INFO (MainThread) [homeassistant.setup] Setup of domain input_number took 0.00 seconds
-2026-02-01 13:43:10.287 INFO (MainThread) [homeassistant.setup] Setting up history
-2026-02-01 13:43:10.287 INFO (MainThread) [homeassistant.setup] Setup of domain history took 0.00 seconds
-2026-02-01 13:43:10.287 INFO (MainThread) [homeassistant.setup] Setting up logbook
-2026-02-01 13:43:10.288 INFO (MainThread) [homeassistant.setup] Setup of domain logbook took 0.00 seconds
-2026-02-01 13:43:10.288 INFO (MainThread) [homeassistant.setup] Setting up zone
-2026-02-01 13:43:10.289 INFO (MainThread) [homeassistant.setup] Setup of domain zone took 0.00 seconds
-2026-02-01 13:43:10.289 INFO (MainThread) [homeassistant.setup] Setting up input_select
-2026-02-01 13:43:10.292 INFO (MainThread) [homeassistant.setup] Setup of domain input_select took 0.00 seconds
-2026-02-01 13:43:10.292 INFO (MainThread) [homeassistant.setup] Setting up input_button
-2026-02-01 13:43:10.292 INFO (MainThread) [homeassistant.setup] Setup of domain input_button took 0.00 seconds
-2026-02-01 13:43:10.293 INFO (MainThread) [homeassistant.setup] Setting up media_source
-2026-02-01 13:43:10.294 INFO (MainThread) [homeassistant.setup] Setup of domain media_source took 0.00 seconds
-2026-02-01 13:43:10.294 INFO (MainThread) [homeassistant.setup] Setting up image_upload
-2026-02-01 13:43:10.295 INFO (MainThread) [homeassistant.setup] Setup of domain image_upload took 0.00 seconds
-2026-02-01 13:43:10.295 INFO (MainThread) [homeassistant.setup] Setting up person
-2026-02-01 13:43:10.295 INFO (MainThread) [homeassistant.setup] Setting up stream
-2026-02-01 13:43:10.296 INFO (MainThread) [homeassistant.setup] Setting up input_boolean
-2026-02-01 13:43:10.297 INFO (MainThread) [homeassistant.setup] Setup of domain input_boolean took 0.00 seconds
-2026-02-01 13:43:10.298 INFO (MainThread) [homeassistant.setup] Setting up timer
-2026-02-01 13:43:10.300 INFO (MainThread) [homeassistant.setup] Setup of domain timer took 0.00 seconds
-2026-02-01 13:43:10.300 INFO (MainThread) [homeassistant.setup] Setting up script
-2026-02-01 13:43:10.300 INFO (MainThread) [homeassistant.setup] Setup of domain script took 0.00 seconds
-2026-02-01 13:43:10.301 INFO (MainThread) [homeassistant.setup] Setting up system_health
-2026-02-01 13:43:10.301 INFO (MainThread) [homeassistant.setup] Setup of domain system_health took 0.00 seconds
-2026-02-01 13:43:10.302 INFO (MainThread) [homeassistant.helpers.entity_registry] Registered new person.person entity: person.developer
-2026-02-01 13:43:10.304 INFO (MainThread) [homeassistant.setup] Setup of domain person took 0.01 seconds
-2026-02-01 13:43:10.538 INFO (MainThread) [homeassistant.setup] Setting up cz_energy_spot_prices
-2026-02-01 13:43:10.539 INFO (MainThread) [homeassistant.setup] Setup of domain cz_energy_spot_prices took 0.00 seconds
-2026-02-01 13:43:10.539 DEBUG (MainThread) [custom_components.cz_energy_spot_prices] async_setup_entry cz_energy_spot_prices_dev data: [{'currency': 'CZK', 'unit_of_measurement': 'kWh', 'commodity': 'electricity', 'interval': '60min'}]; options: [{}]
-2026-02-01 13:43:10.539 DEBUG (MainThread) [custom_components.cz_energy_spot_prices.coordinator] SpotRateCoordinator[electricity].__init__
-2026-02-01 13:43:10.544 DEBUG (MainThread) [custom_components.cz_energy_spot_prices.coordinator] SpotRateCoordinator[electricity]._async_update_data
-2026-02-01 13:43:10.544 DEBUG (MainThread) [custom_components.cz_energy_spot_prices.coordinator] SpotRateCoordinator[electricity]._fetch_data_with_retry
-2026-02-01 13:43:10.544 DEBUG (MainThread) [custom_components.cz_energy_spot_prices.coordinator] SpotRateCoordinator[electricity]._fetch_data
-2026-02-01 13:43:10.571 INFO (MainThread) [homeassistant.setup] Setup of domain stream took 0.28 seconds
-2026-02-01 13:43:10.591 INFO (MainThread) [homeassistant.setup] Setting up energy
-2026-02-01 13:43:10.591 INFO (MainThread) [homeassistant.setup] Setting up sensor
-2026-02-01 13:43:10.591 INFO (MainThread) [homeassistant.setup] Setup of domain sensor took 0.00 seconds
-2026-02-01 13:43:10.592 INFO (MainThread) [homeassistant.setup] Setup of domain energy took 0.00 seconds
-2026-02-01 13:43:10.602 INFO (MainThread) [homeassistant.setup] Setting up usage_prediction
-2026-02-01 13:43:10.602 INFO (MainThread) [homeassistant.setup] Setup of domain usage_prediction took 0.00 seconds
-2026-02-01 13:43:10.608 INFO (MainThread) [homeassistant.setup] Setting up file
-2026-02-01 13:43:10.609 INFO (MainThread) [homeassistant.setup] Setup of domain file took 0.00 seconds
-2026-02-01 13:43:10.613 INFO (MainThread) [homeassistant.setup] Setting up input_text
-2026-02-01 13:43:10.614 INFO (MainThread) [homeassistant.setup] Setup of domain input_text took 0.00 seconds
-2026-02-01 13:43:10.616 INFO (MainThread) [homeassistant.setup] Setting up my
-2026-02-01 13:43:10.616 INFO (MainThread) [homeassistant.setup] Setup of domain my took 0.00 seconds
-2026-02-01 13:43:11.089 DEBUG (MainThread) [custom_components.cz_energy_spot_prices.coordinator] SpotRateCoordinator[electricity] scheduling update at 2026-02-02 12:11:58+00:00
-2026-02-01 13:43:11.089 INFO (MainThread) [custom_components.cz_energy_spot_prices.coordinator] SpotRateCoordinator[electricity] data updated, scheduling next update at 2026-02-02 12:11:58+00:00
-2026-02-01 13:43:11.089 DEBUG (MainThread) [custom_components.cz_energy_spot_prices.coordinator] Finished fetching Czech Energy Spot Prices [SpotRateCoordinator] for electricity data in 0.545 seconds (success: True)
-2026-02-01 13:43:11.101 DEBUG (MainThread) [custom_components.cz_energy_spot_prices.coordinator] FxCoordinator._fetch_data_with_retry
-2026-02-01 13:43:11.101 DEBUG (MainThread) [custom_components.cz_energy_spot_prices.coordinator] FxCoordinator._fetch_data
-2026-02-01 13:43:11.105 INFO (MainThread) [homeassistant.setup] Setting up open_meteo
-2026-02-01 13:43:11.105 INFO (MainThread) [homeassistant.setup] Setup of domain open_meteo took 0.00 seconds
-2026-02-01 13:43:11.120 INFO (MainThread) [homeassistant.setup] Setting up solax_pv_simulator
-2026-02-01 13:43:11.120 INFO (MainThread) [homeassistant.setup] Setup of domain solax_pv_simulator took 0.00 seconds
-2026-02-01 13:43:11.120 INFO (MainThread) [custom_components.solax_pv_simulator] Setting up Solax PV Simulator: Solax Simulator
-2026-02-01 13:43:11.171 INFO (MainThread) [homeassistant.setup] Setting up go2rtc
-2026-02-01 13:43:11.179 INFO (MainThread) [homeassistant.setup] Setting up homeassistant_alerts
-2026-02-01 13:43:11.179 INFO (MainThread) [homeassistant.setup] Setup of domain homeassistant_alerts took 0.00 seconds
-2026-02-01 13:43:11.187 INFO (MainThread) [homeassistant.setup] Setting up tag
-2026-02-01 13:43:11.188 INFO (MainThread) [homeassistant.setup] Setup of domain tag took 0.00 seconds
-2026-02-01 13:43:11.191 INFO (MainThread) [homeassistant.setup] Setting up sun
-2026-02-01 13:43:11.191 INFO (MainThread) [homeassistant.setup] Setup of domain sun took 0.00 seconds
-2026-02-01 13:43:11.193 INFO (MainThread) [homeassistant.setup] Setting up binary_sensor
-2026-02-01 13:43:11.193 INFO (MainThread) [homeassistant.setup] Setup of domain binary_sensor took 0.00 seconds
-2026-02-01 13:43:11.194 INFO (MainThread) [homeassistant.components.binary_sensor] Setting up sun.binary_sensor
-2026-02-01 13:43:11.194 INFO (MainThread) [homeassistant.helpers.entity_registry] Registered new binary_sensor.sun entity: binary_sensor.sun_solar_rising
-2026-02-01 13:43:11.194 INFO (MainThread) [homeassistant.components.sensor] Setting up sun.sensor
-2026-02-01 13:43:11.195 INFO (MainThread) [homeassistant.helpers.entity_registry] Registered new sensor.sun entity: sensor.sun_next_dawn
-2026-02-01 13:43:11.195 INFO (MainThread) [homeassistant.helpers.entity_registry] Registered new sensor.sun entity: sensor.sun_next_dusk
-2026-02-01 13:43:11.195 INFO (MainThread) [homeassistant.helpers.entity_registry] Registered new sensor.sun entity: sensor.sun_next_midnight
-2026-02-01 13:43:11.195 INFO (MainThread) [homeassistant.helpers.entity_registry] Registered new sensor.sun entity: sensor.sun_next_noon
-2026-02-01 13:43:11.196 INFO (MainThread) [homeassistant.helpers.entity_registry] Registered new sensor.sun entity: sensor.sun_next_rising
-2026-02-01 13:43:11.196 INFO (MainThread) [homeassistant.helpers.entity_registry] Registered new sensor.sun entity: sensor.sun_next_setting
-2026-02-01 13:43:11.196 INFO (MainThread) [homeassistant.helpers.entity_registry] Registered new sensor.sun entity: sensor.sun_solar_elevation
-2026-02-01 13:43:11.196 INFO (MainThread) [homeassistant.helpers.entity_registry] Registered new sensor.sun entity: sensor.sun_solar_azimuth
-2026-02-01 13:43:11.200 INFO (MainThread) [homeassistant.setup] Setting up input_datetime
-2026-02-01 13:43:11.201 INFO (MainThread) [homeassistant.setup] Setup of domain input_datetime took 0.00 seconds
-2026-02-01 13:43:11.209 INFO (MainThread) [homeassistant.setup] Setting up hardware
-2026-02-01 13:43:11.236 INFO (MainThread) [homeassistant.setup] Setup of domain hardware took 0.03 seconds
-2026-02-01 13:43:11.267 INFO (MainThread) [homeassistant.setup] Setup of domain go2rtc took 0.10 seconds
-2026-02-01 13:43:11.443 DEBUG (MainThread) [custom_components.cz_energy_spot_prices.coordinator] Finished fetching Czech Energy Spot Prices [FxCoordinator] data in 0.342 seconds (success: True)
-2026-02-01 13:43:11.446 DEBUG (MainThread) [custom_components.cz_energy_spot_prices.coordinator] Finished fetching Czech Energy Spot Prices [EntryCoordinator (<EnergyUnit.kWh: 'kWh'>, <Currency.CZK: 'CZK'>, <Commodity.Electricity: 'electricity'>, <SpotRateIntervalType.Hour: '60min'>)] data in 0.000 seconds (success: True)
-2026-02-01 13:43:11.608 INFO (MainThread) [homeassistant.setup] Setting up mcp_server
-2026-02-01 13:43:11.609 INFO (MainThread) [homeassistant.setup] Setup of domain mcp_server took 0.00 seconds
-2026-02-01 13:43:11.617 INFO (MainThread) [homeassistant.setup] Setting up schedule
-2026-02-01 13:43:11.618 INFO (MainThread) [homeassistant.setup] Setup of domain schedule took 0.00 seconds
-2026-02-01 13:43:11.621 INFO (MainThread) [homeassistant.setup] Setting up counter
-2026-02-01 13:43:11.622 INFO (MainThread) [homeassistant.setup] Setup of domain counter took 0.00 seconds
-2026-02-01 13:43:11.627 INFO (MainThread) [homeassistant.setup] Setting up application_credentials
-2026-02-01 13:43:11.628 INFO (MainThread) [homeassistant.setup] Setup of domain application_credentials took 0.00 seconds
-2026-02-01 13:43:11.635 INFO (MainThread) [homeassistant.components.sensor] Setting up energy.sensor
-2026-02-01 13:43:11.641 INFO (MainThread) [homeassistant.setup] Setting up analytics
-2026-02-01 13:43:11.641 INFO (MainThread) [homeassistant.setup] Setup of domain analytics took 0.00 seconds
-2026-02-01 13:43:11.655 INFO (MainThread) [homeassistant.setup] Setting up button
-2026-02-01 13:43:11.656 INFO (MainThread) [homeassistant.setup] Setup of domain button took 0.00 seconds
-2026-02-01 13:43:11.656 INFO (MainThread) [homeassistant.components.button] Setting up solax_pv_simulator.button
-2026-02-01 13:43:11.656 INFO (MainThread) [homeassistant.helpers.entity_registry] Registered new button.solax_pv_simulator entity: button.solax_simulator_remote_control_trigger
-2026-02-01 13:43:11.657 INFO (MainThread) [homeassistant.helpers.entity_registry] Registered new button.solax_pv_simulator entity: button.solax_simulator_passive_update_battery
-2026-02-01 13:43:11.657 INFO (MainThread) [homeassistant.setup] Setting up number
-2026-02-01 13:43:11.657 INFO (MainThread) [homeassistant.setup] Setup of domain number took 0.00 seconds
-2026-02-01 13:43:11.657 INFO (MainThread) [homeassistant.components.number] Setting up solax_pv_simulator.number
-2026-02-01 13:43:11.658 INFO (MainThread) [homeassistant.helpers.entity_registry] Registered new number.solax_pv_simulator entity: number.solax_simulator_remote_control_active_power
-2026-02-01 13:43:11.658 INFO (MainThread) [homeassistant.helpers.entity_registry] Registered new number.solax_pv_simulator entity: number.solax_simulator_remote_control_autorepeat_duration
-2026-02-01 13:43:11.658 INFO (MainThread) [homeassistant.helpers.entity_registry] Registered new number.solax_pv_simulator entity: number.solax_simulator_passive_desired_grid_power
-2026-02-01 13:43:11.658 INFO (MainThread) [homeassistant.setup] Setting up select
-2026-02-01 13:43:11.659 INFO (MainThread) [homeassistant.setup] Setup of domain select took 0.00 seconds
-2026-02-01 13:43:11.659 INFO (MainThread) [homeassistant.components.select] Setting up solax_pv_simulator.select
-2026-02-01 13:43:11.659 INFO (MainThread) [homeassistant.helpers.entity_registry] Registered new select.solax_pv_simulator entity: select.solax_simulator_remote_control_power_control
-2026-02-01 13:43:11.660 INFO (MainThread) [homeassistant.helpers.entity_registry] Registered new select.solax_pv_simulator entity: select.solax_simulator_energy_storage_mode
-2026-02-01 13:43:11.660 INFO (MainThread) [homeassistant.components.sensor] Setting up solax_pv_simulator.sensor
-2026-02-01 13:43:11.660 INFO (MainThread) [homeassistant.helpers.entity_registry] Registered new sensor.solax_pv_simulator entity: sensor.solax_simulator_battery_soc
-2026-02-01 13:43:11.660 INFO (MainThread) [homeassistant.helpers.entity_registry] Registered new sensor.solax_pv_simulator entity: sensor.solax_simulator_battery_power
-2026-02-01 13:43:11.661 INFO (MainThread) [homeassistant.helpers.entity_registry] Registered new sensor.solax_pv_simulator entity: sensor.solax_simulator_battery_temperature
-2026-02-01 13:43:11.661 INFO (MainThread) [homeassistant.helpers.entity_registry] Registered new sensor.solax_pv_simulator entity: sensor.solax_simulator_pv_power
-2026-02-01 13:43:11.662 INFO (MainThread) [homeassistant.helpers.entity_registry] Registered new sensor.solax_pv_simulator entity: sensor.solax_simulator_pv_voltage
-2026-02-01 13:43:11.662 INFO (MainThread) [homeassistant.helpers.entity_registry] Registered new sensor.solax_pv_simulator entity: sensor.solax_simulator_pv_current
-2026-02-01 13:43:11.662 INFO (MainThread) [homeassistant.helpers.entity_registry] Registered new sensor.solax_pv_simulator entity: sensor.solax_simulator_grid_power
-2026-02-01 13:43:11.663 INFO (MainThread) [homeassistant.helpers.entity_registry] Registered new sensor.solax_pv_simulator entity: sensor.solax_simulator_grid_voltage
-2026-02-01 13:43:11.663 INFO (MainThread) [homeassistant.helpers.entity_registry] Registered new sensor.solax_pv_simulator entity: sensor.solax_simulator_grid_frequency
-2026-02-01 13:43:11.664 INFO (MainThread) [homeassistant.helpers.entity_registry] Registered new sensor.solax_pv_simulator entity: sensor.solax_simulator_house_load
-2026-02-01 13:43:11.664 INFO (MainThread) [homeassistant.helpers.entity_registry] Registered new sensor.solax_pv_simulator entity: sensor.solax_simulator_inverter_temperature
-2026-02-01 13:43:11.664 INFO (MainThread) [homeassistant.helpers.entity_registry] Registered new sensor.solax_pv_simulator entity: sensor.solax_simulator_energy_today
-2026-02-01 13:43:11.665 INFO (MainThread) [homeassistant.helpers.entity_registry] Registered new sensor.solax_pv_simulator entity: sensor.solax_simulator_energy_total
-2026-02-01 13:43:11.665 INFO (MainThread) [custom_components.solax_pv_simulator.simulator] Starting Solax PV Simulator
-2026-02-01 13:43:11.715 INFO (MainThread) [homeassistant.setup] Setting up mobile_app
-2026-02-01 13:43:11.899 INFO (MainThread) [homeassistant.setup] Setting up notify
-2026-02-01 13:43:11.899 INFO (MainThread) [homeassistant.setup] Setup of domain notify took 0.00 seconds
-2026-02-01 13:43:11.900 INFO (MainThread) [homeassistant.setup] Setup of domain mobile_app took 0.18 seconds
-2026-02-01 13:43:11.900 INFO (MainThread) [homeassistant.components.notify] Setting up notify.mobile_app
-2026-02-01 13:43:11.900 INFO (MainThread) [homeassistant.setup] Setting up default_config
-2026-02-01 13:43:11.901 INFO (MainThread) [homeassistant.setup] Setup of domain default_config took 0.00 seconds
-2026-02-01 13:43:11.908 INFO (MainThread) [homeassistant.setup] Setting up weather
-2026-02-01 13:43:11.908 INFO (MainThread) [homeassistant.setup] Setup of domain weather took 0.00 seconds
-2026-02-01 13:43:11.908 INFO (MainThread) [homeassistant.components.weather] Setting up open_meteo.weather
-2026-02-01 13:43:11.908 INFO (MainThread) [homeassistant.helpers.entity_registry] Registered new weather.open_meteo entity: weather.open_meteo
-2026-02-01 13:43:11.945 INFO (MainThread) [homeassistant.components.binary_sensor] Setting up cz_energy_spot_prices.binary_sensor
-2026-02-01 13:43:11.945 DEBUG (MainThread) [custom_components.cz_energy_spot_prices.binary_sensor] binary_sensor.async_setup_entry cz_energy_spot_prices_dev, data: [{'currency': 'CZK', 'unit_of_measurement': 'kWh', 'commodity': 'electricity', 'interval': '60min'}] options: [{}]
-2026-02-01 13:43:11.946 INFO (MainThread) [homeassistant.helpers.entity_registry] Registered new binary_sensor.cz_energy_spot_prices entity: binary_sensor.spot_electricity_has_tomorrow_data
-2026-02-01 13:43:11.946 INFO (MainThread) [homeassistant.helpers.entity_registry] Registered new binary_sensor.cz_energy_spot_prices entity: binary_sensor.spot_electricity_is_cheapest
-2026-02-01 13:43:11.946 INFO (MainThread) [homeassistant.components.sensor] Setting up cz_energy_spot_prices.sensor
-2026-02-01 13:43:11.946 DEBUG (MainThread) [custom_components.cz_energy_spot_prices.sensor] sensor.async_setup_entry {'created_at': '2026-02-01T12:42:58.054772+00:00', 'data': {'currency': 'CZK', 'unit_of_measurement': 'kWh', 'commodity': 'electricity', 'interval': '60min'}, 'discovery_keys': {}, 'disabled_by': None, 'domain': 'cz_energy_spot_prices', 'entry_id': '22d06754-7cbc-4c60-a57d-5dd82690bdf9', 'minor_version': 1, 'modified_at': '2026-02-01T12:42:58.054772+00:00', 'options': {}, 'pref_disable_new_entities': False, 'pref_disable_polling': False, 'source': 'user', 'subentries': [], 'title': 'Electricity Spot 60min Rate in CZK/kWh', 'unique_id': 'cz_energy_spot_prices_dev', 'version': 1}, data: [{'currency': 'CZK', 'unit_of_measurement': 'kWh', 'commodity': 'electricity', 'interval': '60min'}] options: [{}]
-2026-02-01 13:43:11.946 DEBUG (MainThread) [custom_components.cz_energy_spot_prices.sensor] Setting 22d06754-7cbc-4c60-a57d-5dd82690bdf9_current_spot_electricity_price to 2.447354699999999828463614904
-2026-02-01 13:43:11.946 DEBUG (MainThread) [custom_components.cz_energy_spot_prices.sensor] Setting 22d06754-7cbc-4c60-a57d-5dd82690bdf9_current_spot_electricity_price _attr_available to 2.447354699999999828463614904
-2026-02-01 13:43:11.946 DEBUG (MainThread) [custom_components.cz_energy_spot_prices.sensor] 22d06754-7cbc-4c60-a57d-5dd82690bdf9_spot_cheapest_electricity_today initialized with 2.34 at 2026-02-01T02:00:00+00:00
-2026-02-01 13:43:11.946 DEBUG (MainThread) [custom_components.cz_energy_spot_prices.sensor] 22d06754-7cbc-4c60-a57d-5dd82690bdf9_spot_cheapest_electricity_tomorrow initialized with 2.36 at 2026-02-02T01:00:00+00:00
-2026-02-01 13:43:11.946 DEBUG (MainThread) [custom_components.cz_energy_spot_prices.sensor] 22d06754-7cbc-4c60-a57d-5dd82690bdf9_spot_most_expensive_electricity_today initialized with 3.36 at 2026-02-01T18:00:00+00:00
-2026-02-01 13:43:11.946 DEBUG (MainThread) [custom_components.cz_energy_spot_prices.sensor] 22d06754-7cbc-4c60-a57d-5dd82690bdf9_spot_most_expensive_electricity_tomorrow initialized with 3.98 at 2026-02-02T07:00:00+00:00
-2026-02-01 13:43:11.947 DEBUG (MainThread) [custom_components.cz_energy_spot_prices.sensor] 22d06754-7cbc-4c60-a57d-5dd82690bdf9_current_spot_electricity_hour_order updated from None to 8
-2026-02-01 13:43:11.947 INFO (MainThread) [homeassistant.helpers.entity_registry] Registered new sensor.cz_energy_spot_prices entity: sensor.current_spot_electricity_price
-2026-02-01 13:43:11.947 INFO (MainThread) [homeassistant.helpers.entity_registry] Registered new sensor.cz_energy_spot_prices entity: sensor.spot_cheapest_electricity_today
-2026-02-01 13:43:11.948 INFO (MainThread) [homeassistant.helpers.entity_registry] Registered new sensor.cz_energy_spot_prices entity: sensor.spot_cheapest_electricity_tomorrow
-2026-02-01 13:43:11.948 INFO (MainThread) [homeassistant.helpers.entity_registry] Registered new sensor.cz_energy_spot_prices entity: sensor.spot_most_expensive_electricity_today
-2026-02-01 13:43:11.948 INFO (MainThread) [homeassistant.helpers.entity_registry] Registered new sensor.cz_energy_spot_prices entity: sensor.spot_most_expensive_electricity_tomorrow
-2026-02-01 13:43:11.949 INFO (MainThread) [homeassistant.helpers.entity_registry] Registered new sensor.cz_energy_spot_prices entity: sensor.current_spot_electricity_hour_order
-2026-02-01 13:43:11.949 INFO (MainThread) [homeassistant.helpers.entity_registry] Registered new sensor.cz_energy_spot_prices entity: sensor.tomorrow_spot_electricity_hour_order
-2026-02-01 13:43:11.998 INFO (MainThread) [homeassistant.setup] Setting up solar_mind
-2026-02-01 13:43:11.998 INFO (MainThread) [homeassistant.setup] Setup of domain solar_mind took 0.00 seconds
-2026-02-01 13:43:11.998 DEBUG (MainThread) [custom_components.solar_mind] Setting up Solar Mind integration: 424553b9-d8b6-462a-914f-61f1d558bdaf
-2026-02-01 13:43:12.008 DEBUG (MainThread) [custom_components.solar_mind.planner] Created energy plan: 48 hours, PV: 44.7 kWh, Load: 18.9 kWh, Import: 0.0 kWh, Export: 17.0 kWh
-2026-02-01 13:43:12.008 DEBUG (MainThread) [custom_components.solar_mind.coordinator] Generated energy plan: 48 hours, PV: 44.7 kWh, Load: 18.9 kWh
-2026-02-01 13:43:12.008 DEBUG (MainThread) [custom_components.solar_mind.coordinator] Recorded actuals for hour 11:00, total history: 1 entries
-2026-02-01 13:43:12.008 DEBUG (MainThread) [custom_components.solar_mind.coordinator] Finished fetching solar_mind data in 0.008 seconds (success: True)
-2026-02-01 13:43:12.019 INFO (MainThread) [homeassistant.components.sensor] Setting up solar_mind.sensor
-2026-02-01 13:43:12.020 INFO (MainThread) [homeassistant.helpers.entity_registry] Registered new sensor.solar_mind entity: sensor.solar_mind_status
-2026-02-01 13:43:12.020 INFO (MainThread) [homeassistant.helpers.entity_registry] Registered new sensor.solar_mind entity: sensor.solar_mind_recommended_action
-2026-02-01 13:43:12.020 INFO (MainThread) [homeassistant.helpers.entity_registry] Registered new sensor.solar_mind entity: sensor.solar_mind_current_price
-2026-02-01 13:43:12.020 INFO (MainThread) [homeassistant.helpers.entity_registry] Registered new sensor.solar_mind entity: sensor.solar_mind_active_strategy
-2026-02-01 13:43:12.021 INFO (MainThread) [homeassistant.helpers.entity_registry] Registered new sensor.solar_mind entity: sensor.solar_mind_strategy_mode
-2026-02-01 13:43:12.021 INFO (MainThread) [homeassistant.helpers.entity_registry] Registered new sensor.solar_mind entity: sensor.solar_mind_next_cheap_hour
-2026-02-01 13:43:12.021 INFO (MainThread) [homeassistant.helpers.entity_registry] Registered new sensor.solar_mind entity: sensor.solar_mind_cheapest_hours_today
-2026-02-01 13:43:12.021 INFO (MainThread) [homeassistant.helpers.entity_registry] Registered new sensor.solar_mind entity: sensor.solar_mind_last_update
-2026-02-01 13:43:12.022 INFO (MainThread) [homeassistant.helpers.entity_registry] Registered new sensor.solar_mind entity: sensor.solar_mind_next_action
-2026-02-01 13:43:12.022 INFO (MainThread) [homeassistant.helpers.entity_registry] Registered new sensor.solar_mind entity: sensor.solar_mind_battery_soc
-2026-02-01 13:43:12.022 INFO (MainThread) [homeassistant.helpers.entity_registry] Registered new sensor.solar_mind entity: sensor.solar_mind_last_error
-2026-02-01 13:43:12.023 INFO (MainThread) [homeassistant.helpers.entity_registry] Registered new sensor.solar_mind entity: sensor.solar_mind_pv_forecast_today
-2026-02-01 13:43:12.023 INFO (MainThread) [homeassistant.helpers.entity_registry] Registered new sensor.solar_mind entity: sensor.solar_mind_pv_forecast_tomorrow
-2026-02-01 13:43:12.025 INFO (MainThread) [homeassistant.helpers.entity_registry] Registered new sensor.solar_mind entity: sensor.solar_mind_load_forecast_today
-2026-02-01 13:43:12.026 INFO (MainThread) [homeassistant.helpers.entity_registry] Registered new sensor.solar_mind entity: sensor.solar_mind_next_planned_charge
-2026-02-01 13:43:12.026 INFO (MainThread) [homeassistant.helpers.entity_registry] Registered new sensor.solar_mind entity: sensor.solar_mind_next_planned_discharge
-2026-02-01 13:43:12.027 INFO (MainThread) [homeassistant.helpers.entity_registry] Registered new sensor.solar_mind entity: sensor.solar_mind_predicted_soc_6h
-2026-02-01 13:43:12.028 INFO (MainThread) [homeassistant.helpers.entity_registry] Registered new sensor.solar_mind entity: sensor.solar_mind_estimated_daily_cost
-2026-02-01 13:43:12.028 INFO (MainThread) [homeassistant.helpers.entity_registry] Registered new sensor.solar_mind entity: sensor.solar_mind_estimated_daily_revenue
-2026-02-01 13:43:12.028 INFO (MainThread) [homeassistant.helpers.entity_registry] Registered new sensor.solar_mind entity: sensor.solar_mind_current_hour_plan
-2026-02-01 13:43:12.029 INFO (MainThread) [homeassistant.helpers.entity_registry] Registered new sensor.solar_mind entity: sensor.solar_mind_forecast_accuracy
-2026-02-01 13:43:12.029 INFO (MainThread) [homeassistant.helpers.entity_registry] Registered new sensor.solar_mind entity: sensor.solar_mind_plan_horizon
-2026-02-01 13:43:12.030 INFO (MainThread) [homeassistant.helpers.entity_registry] Registered new sensor.solar_mind entity: sensor.solar_mind_historical_accuracy
-2026-02-01 13:43:12.035 INFO (MainThread) [homeassistant.bootstrap] Home Assistant initialized in 3.54s
-2026-02-01 13:43:12.036 INFO (MainThread) [homeassistant.core] Starting Home Assistant 2026.1.3
-2026-02-01 13:43:12.083 INFO (MainThread) [homeassistant.setup] Setting up event
-2026-02-01 13:43:12.083 INFO (MainThread) [homeassistant.components.event] Setting up backup.event
-2026-02-01 13:43:12.084 INFO (MainThread) [homeassistant.helpers.entity_registry] Registered new event.backup entity: event.backup_automatic_backup
-2026-02-01 13:43:12.085 INFO (MainThread) [homeassistant.components.sensor] Setting up backup.sensor
-2026-02-01 13:43:12.085 INFO (MainThread) [homeassistant.helpers.entity_registry] Registered new sensor.backup entity: sensor.backup_backup_manager_state
-2026-02-01 13:43:12.085 INFO (MainThread) [homeassistant.helpers.entity_registry] Registered new sensor.backup entity: sensor.backup_next_scheduled_automatic_backup
-2026-02-01 13:43:12.085 INFO (MainThread) [homeassistant.helpers.entity_registry] Registered new sensor.backup entity: sensor.backup_last_successful_automatic_backup
-2026-02-01 13:43:12.086 INFO (MainThread) [homeassistant.helpers.entity_registry] Registered new sensor.backup entity: sensor.backup_last_attempted_automatic_backup
-2026-02-01 13:43:13.124 WARNING (MainThread) [homeassistant.components.http.ban] Login attempt or request with invalid authentication from 172.18.0.1 (172.18.0.1). Requested URL: '/auth/token'. (Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36)
-2026-02-01 13:43:13.133 WARNING (MainThread) [homeassistant.components.http.ban] Login attempt or request with invalid authentication from 172.18.0.1 (172.18.0.1). Requested URL: '/api/websocket'. (Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36)
-2026-02-01 13:45:00.089 DEBUG (MainThread) [custom_components.cz_energy_spot_prices.coordinator] Manually updated Czech Energy Spot Prices [EntryCoordinator (<EnergyUnit.kWh: 'kWh'>, <Currency.CZK: 'CZK'>, <Commodity.Electricity: 'electricity'>, <SpotRateIntervalType.Hour: '60min'>)] data
-2026-02-01 13:45:00.089 DEBUG (MainThread) [custom_components.cz_energy_spot_prices.sensor] Setting 22d06754-7cbc-4c60-a57d-5dd82690bdf9_current_spot_electricity_price to 2.447354699999999828463614904
-2026-02-01 13:45:00.090 DEBUG (MainThread) [custom_components.cz_energy_spot_prices.sensor] Setting 22d06754-7cbc-4c60-a57d-5dd82690bdf9_current_spot_electricity_price _attr_available to 2.447354699999999828463614904
-2026-02-01 13:45:00.090 DEBUG (MainThread) [custom_components.cz_energy_spot_prices.sensor] 22d06754-7cbc-4c60-a57d-5dd82690bdf9_spot_cheapest_electricity_today unchanged with 2.34 at 2026-02-01T02:00:00+00:00
-2026-02-01 13:45:00.090 DEBUG (MainThread) [custom_components.cz_energy_spot_prices.sensor] 22d06754-7cbc-4c60-a57d-5dd82690bdf9_spot_cheapest_electricity_tomorrow unchanged with 2.36 at 2026-02-02T01:00:00+00:00
-2026-02-01 13:45:00.090 DEBUG (MainThread) [custom_components.cz_energy_spot_prices.sensor] 22d06754-7cbc-4c60-a57d-5dd82690bdf9_spot_most_expensive_electricity_today unchanged with 3.36 at 2026-02-01T18:00:00+00:00
-2026-02-01 13:45:00.090 DEBUG (MainThread) [custom_components.cz_energy_spot_prices.sensor] 22d06754-7cbc-4c60-a57d-5dd82690bdf9_spot_most_expensive_electricity_tomorrow unchanged with 3.98 at 2026-02-02T07:00:00+00:00
-2026-02-01 13:45:00.090 DEBUG (MainThread) [custom_components.cz_energy_spot_prices.sensor] 22d06754-7cbc-4c60-a57d-5dd82690bdf9_current_spot_electricity_hour_order unchanged with 8
-2026-02-01 13:45:10.220 INFO (Recorder) [homeassistant.components.sensor.recorder] Detected new cycle for sensor.solax_simulator_energy_today, value dropped from 2.38 to 0.0, triggered by state with last_updated set to 2026-02-01T12:43:11.665003+00:00
-2026-02-01 13:45:10.220 INFO (Recorder) [homeassistant.components.sensor.recorder] Detected new cycle for sensor.solax_simulator_energy_total, value dropped from 2.38 to 0.0, triggered by state with last_updated set to 2026-02-01T12:43:11.665356+00:00
-2026-02-01 13:45:10.220 INFO (Recorder) [homeassistant.components.sensor.recorder] Compiling initial sum statistics for sensor.solar_mind_pv_forecast_today, zero point set to 13.65
-2026-02-01 13:45:10.220 INFO (Recorder) [homeassistant.components.sensor.recorder] Compiling initial sum statistics for sensor.solar_mind_pv_forecast_tomorrow, zero point set to 22.33
-2026-02-01 13:45:10.220 INFO (Recorder) [homeassistant.components.sensor.recorder] Compiling initial sum statistics for sensor.solar_mind_load_forecast_today, zero point set to 6.2
-2026-02-01 13:47:05.711 WARNING (MainThread) [homeassistant.components.http.ban] Login attempt or request with invalid authentication from 172.18.0.1 (172.18.0.1). Requested URL: '/api/config'. (curl/8.7.1)
-2026-02-01 13:47:12.825 WARNING (MainThread) [homeassistant.components.http.ban] Login attempt or request with invalid authentication from 172.18.0.1 (172.18.0.1). Requested URL: '/api/'. (curl/8.7.1)
-2026-02-01 13:47:12.848 WARNING (MainThread) [homeassistant.components.http.ban] Login attempt or request with invalid authentication from 172.18.0.1 (172.18.0.1). Requested URL: '/api/'. (curl/8.7.1)
-2026-02-01 13:47:14.143 WARNING (MainThread) [homeassistant.components.http.ban] Login attempt or request with invalid authentication from 172.18.0.1 (172.18.0.1). Requested URL: '/api/mcp'. (curl/8.7.1)
-2026-02-01 13:47:26.620 WARNING (MainThread) [homeassistant.components.http.ban] Login attempt or request with invalid authentication from 172.18.0.1 (172.18.0.1). Requested URL: '/api/'. (curl/8.7.1)
-2026-02-01 13:47:43.400 WARNING (MainThread) [homeassistant.components.http.ban] Login attempt or request with invalid authentication from 172.18.0.1 (172.18.0.1). Requested URL: '/api/'. (curl/8.7.1)
-2026-02-01 13:48:11.840 DEBUG (MainThread) [custom_components.solar_mind.planner] Created energy plan: 48 hours, PV: 44.7 kWh, Load: 18.9 kWh, Import: 0.0 kWh, Export: 17.3 kWh
-2026-02-01 13:48:11.840 DEBUG (MainThread) [custom_components.solar_mind.coordinator] Generated energy plan: 48 hours, PV: 44.7 kWh, Load: 18.9 kWh
-2026-02-01 13:48:11.840 DEBUG (MainThread) [custom_components.solar_mind.coordinator] Finished fetching solar_mind data in 0.006 seconds (success: True)
+2026-02-02 16:13:12.791 INFO (MainThread) [homeassistant.components.http] Now listening on port 8123
+2026-02-02 16:13:12.792 INFO (MainThread) [homeassistant.setup] Setup of domain http took 0.00 seconds
+2026-02-02 16:13:12.799 INFO (MainThread) [homeassistant.setup] Setting up recorder
+2026-02-02 16:13:12.819 WARNING (Recorder) [homeassistant.components.recorder.util] The system could not validate that the sqlite3 database at //config/home-assistant_v2.db was shutdown cleanly
+2026-02-02 16:13:12.861 WARNING (Recorder) [homeassistant.components.recorder.util] Ended unfinished session (id=15 from 2026-02-02 14:59:58.532505)
+2026-02-02 16:13:12.872 INFO (MainThread) [homeassistant.setup] Setup of domain recorder took 0.07 seconds
+2026-02-02 16:13:12.873 INFO (MainThread) [homeassistant.bootstrap] Nothing to set up in stage debugger: {'debugpy'}
+2026-02-02 16:13:12.873 INFO (MainThread) [homeassistant.bootstrap] Setting up stage zeroconf: {'zeroconf'}; already set up: {}
+Dependencies: {}; already set up: {'network', 'websocket_api', 'api', 'http'}
+2026-02-02 16:13:12.873 INFO (MainThread) [homeassistant.setup] Setting up zeroconf
+2026-02-02 16:13:12.875 INFO (MainThread) [homeassistant.components.zeroconf] Starting Zeroconf broadcast
+2026-02-02 16:13:12.875 INFO (MainThread) [homeassistant.setup] Setup of domain zeroconf took 0.00 seconds
+2026-02-02 16:13:12.875 INFO (MainThread) [homeassistant.bootstrap] Setting up stage 1: {'dhcp', 'ssdp', 'usb', 'bluetooth', 'cloud'}; already set up: {}
+Dependencies: {'wake_word', 'tts', 'intent', 'stt', 'webhook', 'ffmpeg', 'assist_pipeline', 'conversation', 'web_rtc', 'backup'}; already set up: {'websocket_api', 'auth', 'repairs', 'http', 'network'}
+2026-02-02 16:13:12.876 INFO (MainThread) [homeassistant.setup] Setting up webhook
+2026-02-02 16:13:12.877 INFO (MainThread) [homeassistant.setup] Setup of domain webhook took 0.00 seconds
+2026-02-02 16:13:12.877 INFO (MainThread) [homeassistant.setup] Setting up backup
+2026-02-02 16:13:12.880 INFO (MainThread) [homeassistant.setup] Setup of domain backup took 0.00 seconds
+2026-02-02 16:13:12.884 INFO (MainThread) [homeassistant.setup] Setting up wake_word
+2026-02-02 16:13:12.884 INFO (MainThread) [homeassistant.setup] Setup of domain wake_word took 0.00 seconds
+2026-02-02 16:13:12.889 INFO (MainThread) [homeassistant.setup] Setting up ffmpeg
+2026-02-02 16:13:12.889 INFO (MainThread) [homeassistant.setup] Setup of domain ffmpeg took 0.00 seconds
+2026-02-02 16:13:12.894 INFO (MainThread) [homeassistant.setup] Setting up stt
+2026-02-02 16:13:12.894 INFO (MainThread) [homeassistant.setup] Setup of domain stt took 0.00 seconds
+2026-02-02 16:13:12.905 INFO (MainThread) [homeassistant.setup] Setting up intent
+2026-02-02 16:13:12.905 INFO (MainThread) [homeassistant.setup] Setup of domain intent took 0.00 seconds
+2026-02-02 16:13:12.919 INFO (MainThread) [homeassistant.setup] Setting up dhcp
+2026-02-02 16:13:12.919 INFO (MainThread) [homeassistant.setup] Setup of domain dhcp took 0.00 seconds
+2026-02-02 16:13:12.940 INFO (MainThread) [homeassistant.setup] Setting up ssdp
+2026-02-02 16:13:12.944 INFO (MainThread) [homeassistant.setup] Setup of domain ssdp took 0.00 seconds
+2026-02-02 16:13:12.952 INFO (MainThread) [homeassistant.setup] Setting up usb
+2026-02-02 16:13:12.952 INFO (MainThread) [homeassistant.setup] Setup of domain usb took 0.00 seconds
+2026-02-02 16:13:12.956 INFO (MainThread) [homeassistant.setup] Setting up web_rtc
+2026-02-02 16:13:12.956 INFO (MainThread) [homeassistant.setup] Setup of domain web_rtc took 0.00 seconds
+2026-02-02 16:13:12.982 INFO (MainThread) [homeassistant.setup] Setting up tts
+2026-02-02 16:13:12.990 INFO (MainThread) [homeassistant.setup] Setup of domain tts took 0.01 seconds
+2026-02-02 16:13:13.116 INFO (MainThread) [homeassistant.setup] Setting up conversation
+2026-02-02 16:13:13.117 INFO (MainThread) [homeassistant.setup] Setup of domain conversation took 0.00 seconds
+2026-02-02 16:13:13.142 INFO (MainThread) [homeassistant.setup] Setting up bluetooth
+2026-02-02 16:13:13.149 INFO (MainThread) [homeassistant.setup] Setting up event
+2026-02-02 16:13:13.150 INFO (MainThread) [homeassistant.setup] Setup of domain event took 0.00 seconds
+2026-02-02 16:13:13.150 INFO (MainThread) [homeassistant.components.event] Setting up backup.event
+2026-02-02 16:13:13.151 INFO (MainThread) [homeassistant.setup] Setting up sensor
+2026-02-02 16:13:13.151 INFO (MainThread) [homeassistant.setup] Setup of domain sensor took 0.00 seconds
+2026-02-02 16:13:13.151 INFO (MainThread) [homeassistant.components.sensor] Setting up backup.sensor
+2026-02-02 16:13:13.177 INFO (MainThread) [homeassistant.setup] Setup of domain bluetooth took 0.04 seconds
+2026-02-02 16:13:13.195 INFO (MainThread) [homeassistant.setup] Setting up assist_pipeline
+2026-02-02 16:13:13.196 INFO (MainThread) [homeassistant.setup] Setup of domain assist_pipeline took 0.00 seconds
+2026-02-02 16:13:13.375 INFO (MainThread) [homeassistant.setup] Setting up cloud
+2026-02-02 16:13:13.392 INFO (MainThread) [homeassistant.setup] Setup of domain cloud took 0.02 seconds
+2026-02-02 16:13:13.393 INFO (MainThread) [homeassistant.bootstrap] Setting up stage 2: {'input_boolean', 'tag', 'go2rtc', 'schedule', 'analytics', 'solar_mind', 'mcp_server', 'person', 'default_config', 'input_number', 'automation', 'solax_pv_simulator', 'hardware', 'counter', 'cz_energy_spot_prices', 'input_text', 'sun', 'application_credentials', 'input_button', 'script', 'timer', 'system_health', 'input_select', 'zone', 'scene', 'open_meteo', 'input_datetime'}; already set up: {'frontend', 'logger', 'network', 'labs', 'backup'}
+Dependencies: {'homeassistant_alerts', 'file', 'camera', 'blueprint', 'image_upload', 'trace', 'stream', 'my', 'media_source', 'logbook', 'mobile_app', 'energy', 'history', 'usage_prediction'}; already set up: {'frontend', 'zeroconf', 'recorder', 'config', 'onboarding', 'lovelace', 'wake_word', 'usb', 'tts', 'cloud', 'stt', 'conversation', 'assist_pipeline', 'device_automation', 'system_log', 'web_rtc', 'backup', 'websocket_api', 'diagnostics', 'bluetooth', 'repairs', 'intent', 'search', 'http', 'homeassistant', 'network', 'api', 'dhcp', 'ssdp', 'auth', 'file_upload', 'webhook', 'ffmpeg'}
+2026-02-02 16:13:13.393 INFO (MainThread) [homeassistant.setup] Setting up camera
+2026-02-02 16:13:13.394 INFO (MainThread) [homeassistant.setup] Setup of domain camera took 0.00 seconds
+2026-02-02 16:13:13.394 INFO (MainThread) [homeassistant.setup] Setting up scene
+2026-02-02 16:13:13.395 INFO (MainThread) [homeassistant.components.scene] Setting up homeassistant.scene
+2026-02-02 16:13:13.395 INFO (MainThread) [homeassistant.setup] Setup of domain scene took 0.00 seconds
+2026-02-02 16:13:13.395 INFO (MainThread) [homeassistant.setup] Setting up input_boolean
+2026-02-02 16:13:13.396 INFO (MainThread) [homeassistant.setup] Setup of domain input_boolean took 0.00 seconds
+2026-02-02 16:13:13.397 INFO (MainThread) [homeassistant.setup] Setting up history
+2026-02-02 16:13:13.397 INFO (MainThread) [homeassistant.setup] Setup of domain history took 0.00 seconds
+2026-02-02 16:13:13.397 INFO (MainThread) [homeassistant.setup] Setting up trace
+2026-02-02 16:13:13.397 INFO (MainThread) [homeassistant.setup] Setup of domain trace took 0.00 seconds
+2026-02-02 16:13:13.398 INFO (MainThread) [homeassistant.setup] Setting up input_select
+2026-02-02 16:13:13.399 INFO (MainThread) [homeassistant.setup] Setup of domain input_select took 0.00 seconds
+2026-02-02 16:13:13.399 INFO (MainThread) [homeassistant.setup] Setting up zone
+2026-02-02 16:13:13.401 INFO (MainThread) [homeassistant.setup] Setup of domain zone took 0.00 seconds
+2026-02-02 16:13:13.401 INFO (MainThread) [homeassistant.setup] Setting up stream
+2026-02-02 16:13:13.402 INFO (MainThread) [homeassistant.setup] Setting up logbook
+2026-02-02 16:13:13.403 INFO (MainThread) [homeassistant.setup] Setup of domain logbook took 0.00 seconds
+2026-02-02 16:13:13.403 INFO (MainThread) [homeassistant.setup] Setting up image_upload
+2026-02-02 16:13:13.404 INFO (MainThread) [homeassistant.setup] Setup of domain image_upload took 0.00 seconds
+2026-02-02 16:13:13.404 INFO (MainThread) [homeassistant.setup] Setting up person
+2026-02-02 16:13:13.404 INFO (MainThread) [homeassistant.setup] Setting up media_source
+2026-02-02 16:13:13.405 INFO (MainThread) [homeassistant.setup] Setup of domain media_source took 0.00 seconds
+2026-02-02 16:13:13.406 INFO (MainThread) [homeassistant.setup] Setting up input_number
+2026-02-02 16:13:13.407 INFO (MainThread) [homeassistant.setup] Setup of domain input_number took 0.00 seconds
+2026-02-02 16:13:13.407 INFO (MainThread) [homeassistant.setup] Setting up blueprint
+2026-02-02 16:13:13.407 INFO (MainThread) [homeassistant.setup] Setup of domain blueprint took 0.00 seconds
+2026-02-02 16:13:13.407 INFO (MainThread) [homeassistant.setup] Setting up automation
+2026-02-02 16:13:13.408 INFO (MainThread) [homeassistant.setup] Setup of domain automation took 0.00 seconds
+2026-02-02 16:13:13.408 INFO (MainThread) [homeassistant.setup] Setting up input_button
+2026-02-02 16:13:13.409 INFO (MainThread) [homeassistant.setup] Setup of domain input_button took 0.00 seconds
+2026-02-02 16:13:13.409 INFO (MainThread) [homeassistant.setup] Setting up script
+2026-02-02 16:13:13.409 INFO (MainThread) [homeassistant.setup] Setup of domain script took 0.00 seconds
+2026-02-02 16:13:13.409 INFO (MainThread) [homeassistant.setup] Setting up timer
+2026-02-02 16:13:13.410 INFO (MainThread) [homeassistant.setup] Setup of domain timer took 0.00 seconds
+2026-02-02 16:13:13.411 INFO (MainThread) [homeassistant.setup] Setting up system_health
+2026-02-02 16:13:13.411 INFO (MainThread) [homeassistant.setup] Setup of domain system_health took 0.00 seconds
+2026-02-02 16:13:13.412 INFO (MainThread) [homeassistant.setup] Setup of domain person took 0.01 seconds
+2026-02-02 16:13:13.439 INFO (MainThread) [homeassistant.setup] Setting up tag
+2026-02-02 16:13:13.439 INFO (MainThread) [homeassistant.setup] Setup of domain tag took 0.00 seconds
+2026-02-02 16:13:13.512 INFO (MainThread) [homeassistant.setup] Setup of domain stream took 0.11 seconds
+2026-02-02 16:13:13.521 INFO (MainThread) [homeassistant.setup] Setting up go2rtc
+2026-02-02 16:13:13.526 INFO (MainThread) [homeassistant.setup] Setting up schedule
+2026-02-02 16:13:13.528 INFO (MainThread) [homeassistant.setup] Setup of domain schedule took 0.00 seconds
+2026-02-02 16:13:13.539 INFO (MainThread) [homeassistant.setup] Setting up energy
+2026-02-02 16:13:13.539 INFO (MainThread) [homeassistant.setup] Setup of domain energy took 0.00 seconds
+2026-02-02 16:13:13.543 INFO (MainThread) [homeassistant.setup] Setup of domain go2rtc took 0.02 seconds
+2026-02-02 16:13:14.096 INFO (MainThread) [homeassistant.setup] Setting up open_meteo
+2026-02-02 16:13:14.096 INFO (MainThread) [homeassistant.setup] Setup of domain open_meteo took 0.00 seconds
+2026-02-02 16:13:14.142 INFO (MainThread) [homeassistant.setup] Setting up cz_energy_spot_prices
+2026-02-02 16:13:14.142 INFO (MainThread) [homeassistant.setup] Setup of domain cz_energy_spot_prices took 0.00 seconds
+2026-02-02 16:13:14.142 DEBUG (MainThread) [custom_components.cz_energy_spot_prices] async_setup_entry cz_energy_spot_prices_dev data: [{'commodity': 'electricity', 'currency': 'CZK', 'interval': '60min', 'unit_of_measurement': 'kWh'}]; options: [{}]
+2026-02-02 16:13:14.142 DEBUG (MainThread) [custom_components.cz_energy_spot_prices.coordinator] SpotRateCoordinator[electricity].__init__
+2026-02-02 16:13:14.146 DEBUG (MainThread) [custom_components.cz_energy_spot_prices.coordinator] SpotRateCoordinator[electricity]._async_update_data
+2026-02-02 16:13:14.146 DEBUG (MainThread) [custom_components.cz_energy_spot_prices.coordinator] SpotRateCoordinator[electricity]._fetch_data_with_retry
+2026-02-02 16:13:14.146 DEBUG (MainThread) [custom_components.cz_energy_spot_prices.coordinator] SpotRateCoordinator[electricity]._fetch_data
+2026-02-02 16:13:14.183 INFO (MainThread) [homeassistant.setup] Setting up solax_pv_simulator
+2026-02-02 16:13:14.183 INFO (MainThread) [homeassistant.setup] Setup of domain solax_pv_simulator took 0.00 seconds
+2026-02-02 16:13:14.184 INFO (MainThread) [custom_components.solax_pv_simulator] Setting up Solax PV Simulator: Solax Simulator
+2026-02-02 16:13:14.468 INFO (MainThread) [homeassistant.setup] Setting up mcp_server
+2026-02-02 16:13:14.468 INFO (MainThread) [homeassistant.setup] Setup of domain mcp_server took 0.00 seconds
+2026-02-02 16:13:14.473 INFO (MainThread) [homeassistant.setup] Setting up file
+2026-02-02 16:13:14.473 INFO (MainThread) [homeassistant.setup] Setup of domain file took 0.00 seconds
+2026-02-02 16:13:14.476 INFO (MainThread) [homeassistant.setup] Setting up homeassistant_alerts
+2026-02-02 16:13:14.477 INFO (MainThread) [homeassistant.setup] Setup of domain homeassistant_alerts took 0.00 seconds
+2026-02-02 16:13:14.479 INFO (MainThread) [homeassistant.setup] Setting up my
+2026-02-02 16:13:14.479 INFO (MainThread) [homeassistant.setup] Setup of domain my took 0.00 seconds
+2026-02-02 16:13:14.483 INFO (MainThread) [homeassistant.setup] Setting up sun
+2026-02-02 16:13:14.484 INFO (MainThread) [homeassistant.setup] Setup of domain sun took 0.00 seconds
+2026-02-02 16:13:14.486 INFO (MainThread) [homeassistant.setup] Setting up binary_sensor
+2026-02-02 16:13:14.486 INFO (MainThread) [homeassistant.setup] Setup of domain binary_sensor took 0.00 seconds
+2026-02-02 16:13:14.487 INFO (MainThread) [homeassistant.components.binary_sensor] Setting up sun.binary_sensor
+2026-02-02 16:13:14.487 INFO (MainThread) [homeassistant.components.sensor] Setting up sun.sensor
+2026-02-02 16:13:14.494 INFO (MainThread) [homeassistant.setup] Setting up usage_prediction
+2026-02-02 16:13:14.495 INFO (MainThread) [homeassistant.setup] Setup of domain usage_prediction took 0.00 seconds
+2026-02-02 16:13:14.509 INFO (MainThread) [homeassistant.setup] Setting up hardware
+2026-02-02 16:13:14.538 INFO (MainThread) [homeassistant.setup] Setting up counter
+2026-02-02 16:13:14.542 INFO (MainThread) [homeassistant.setup] Setup of domain counter took 0.00 seconds
+2026-02-02 16:13:14.561 INFO (MainThread) [homeassistant.setup] Setting up input_text
+2026-02-02 16:13:14.563 INFO (MainThread) [homeassistant.setup] Setup of domain input_text took 0.00 seconds
+2026-02-02 16:13:14.563 INFO (MainThread) [homeassistant.setup] Setting up application_credentials
+2026-02-02 16:13:14.563 INFO (MainThread) [homeassistant.setup] Setup of domain application_credentials took 0.00 seconds
+2026-02-02 16:13:14.583 INFO (MainThread) [homeassistant.setup] Setup of domain hardware took 0.07 seconds
+2026-02-02 16:13:14.586 INFO (MainThread) [homeassistant.setup] Setting up input_datetime
+2026-02-02 16:13:14.591 INFO (MainThread) [homeassistant.setup] Setup of domain input_datetime took 0.00 seconds
+2026-02-02 16:13:14.791 DEBUG (MainThread) [custom_components.cz_energy_spot_prices.coordinator] SpotRateCoordinator[electricity] scheduling update at 2026-02-03 12:10:39+00:00
+2026-02-02 16:13:14.791 INFO (MainThread) [custom_components.cz_energy_spot_prices.coordinator] SpotRateCoordinator[electricity] data updated, scheduling next update at 2026-02-03 12:10:39+00:00
+2026-02-02 16:13:14.791 DEBUG (MainThread) [custom_components.cz_energy_spot_prices.coordinator] Finished fetching Czech Energy Spot Prices [SpotRateCoordinator] for electricity data in 0.645 seconds (success: True)
+2026-02-02 16:13:14.795 DEBUG (MainThread) [custom_components.cz_energy_spot_prices.coordinator] FxCoordinator._fetch_data_with_retry
+2026-02-02 16:13:14.795 DEBUG (MainThread) [custom_components.cz_energy_spot_prices.coordinator] FxCoordinator._fetch_data
+2026-02-02 16:13:14.816 INFO (MainThread) [homeassistant.setup] Setting up mobile_app
+2026-02-02 16:13:14.817 INFO (MainThread) [homeassistant.setup] Setting up notify
+2026-02-02 16:13:14.817 INFO (MainThread) [homeassistant.setup] Setup of domain notify took 0.00 seconds
+2026-02-02 16:13:14.817 INFO (MainThread) [homeassistant.setup] Setup of domain mobile_app took 0.00 seconds
+2026-02-02 16:13:14.817 INFO (MainThread) [homeassistant.components.sensor] Setting up energy.sensor
+2026-02-02 16:13:14.818 INFO (MainThread) [homeassistant.components.notify] Setting up notify.mobile_app
+2026-02-02 16:13:14.818 INFO (MainThread) [homeassistant.setup] Setting up default_config
+2026-02-02 16:13:14.818 INFO (MainThread) [homeassistant.setup] Setup of domain default_config took 0.00 seconds
+2026-02-02 16:13:14.825 INFO (MainThread) [homeassistant.setup] Setting up analytics
+2026-02-02 16:13:14.825 INFO (MainThread) [homeassistant.setup] Setup of domain analytics took 0.00 seconds
+2026-02-02 16:13:14.839 INFO (MainThread) [homeassistant.setup] Setting up button
+2026-02-02 16:13:14.839 INFO (MainThread) [homeassistant.setup] Setup of domain button took 0.00 seconds
+2026-02-02 16:13:14.839 INFO (MainThread) [homeassistant.components.button] Setting up solax_pv_simulator.button
+2026-02-02 16:13:14.840 INFO (MainThread) [homeassistant.setup] Setting up number
+2026-02-02 16:13:14.840 INFO (MainThread) [homeassistant.setup] Setup of domain number took 0.00 seconds
+2026-02-02 16:13:14.840 INFO (MainThread) [homeassistant.components.number] Setting up solax_pv_simulator.number
+2026-02-02 16:13:14.841 INFO (MainThread) [homeassistant.setup] Setting up select
+2026-02-02 16:13:14.842 INFO (MainThread) [homeassistant.setup] Setup of domain select took 0.00 seconds
+2026-02-02 16:13:14.842 INFO (MainThread) [homeassistant.components.select] Setting up solax_pv_simulator.select
+2026-02-02 16:13:14.843 INFO (MainThread) [homeassistant.components.sensor] Setting up solax_pv_simulator.sensor
+2026-02-02 16:13:14.846 INFO (MainThread) [custom_components.solax_pv_simulator.simulator] Starting Solax PV Simulator
+2026-02-02 16:13:14.850 INFO (MainThread) [homeassistant.setup] Setting up weather
+2026-02-02 16:13:14.850 INFO (MainThread) [homeassistant.setup] Setup of domain weather took 0.00 seconds
+2026-02-02 16:13:14.850 INFO (MainThread) [homeassistant.components.weather] Setting up open_meteo.weather
+2026-02-02 16:13:15.016 DEBUG (MainThread) [custom_components.cz_energy_spot_prices.coordinator] Finished fetching Czech Energy Spot Prices [FxCoordinator] data in 0.221 seconds (success: True)
+2026-02-02 16:13:15.020 DEBUG (MainThread) [custom_components.cz_energy_spot_prices.coordinator] Finished fetching Czech Energy Spot Prices [EntryCoordinator (<EnergyUnit.kWh: 'kWh'>, <Currency.CZK: 'CZK'>, <Commodity.Electricity: 'electricity'>, <SpotRateIntervalType.Hour: '60min'>)] data in 0.000 seconds (success: True)
+2026-02-02 16:13:15.032 INFO (MainThread) [homeassistant.components.binary_sensor] Setting up cz_energy_spot_prices.binary_sensor
+2026-02-02 16:13:15.033 DEBUG (MainThread) [custom_components.cz_energy_spot_prices.binary_sensor] binary_sensor.async_setup_entry cz_energy_spot_prices_dev, data: [{'commodity': 'electricity', 'currency': 'CZK', 'interval': '60min', 'unit_of_measurement': 'kWh'}] options: [{}]
+2026-02-02 16:13:15.033 INFO (MainThread) [homeassistant.components.sensor] Setting up cz_energy_spot_prices.sensor
+2026-02-02 16:13:15.033 DEBUG (MainThread) [custom_components.cz_energy_spot_prices.sensor] sensor.async_setup_entry {'created_at': '2026-02-02T14:59:48.349597+00:00', 'data': {'commodity': 'electricity', 'currency': 'CZK', 'interval': '60min', 'unit_of_measurement': 'kWh'}, 'discovery_keys': {}, 'disabled_by': None, 'domain': 'cz_energy_spot_prices', 'entry_id': '7eec7d80-fcaa-4621-aafb-fce830c0a9c3', 'minor_version': 1, 'modified_at': '2026-02-02T14:59:48.349597+00:00', 'options': {}, 'pref_disable_new_entities': False, 'pref_disable_polling': False, 'source': 'user', 'subentries': [], 'title': 'Electricity Spot 60min Rate in CZK/kWh', 'unique_id': 'cz_energy_spot_prices_dev', 'version': 1}, data: [{'commodity': 'electricity', 'currency': 'CZK', 'interval': '60min', 'unit_of_measurement': 'kWh'}] options: [{}]
+2026-02-02 16:13:15.033 DEBUG (MainThread) [custom_components.cz_energy_spot_prices.sensor] Setting 7eec7d80-fcaa-4621-aafb-fce830c0a9c3_current_spot_electricity_price to 3.917646000000000114553699859
+2026-02-02 16:13:15.034 DEBUG (MainThread) [custom_components.cz_energy_spot_prices.sensor] Setting 7eec7d80-fcaa-4621-aafb-fce830c0a9c3_current_spot_electricity_price _attr_available to 3.917646000000000114553699859
+2026-02-02 16:13:15.034 DEBUG (MainThread) [custom_components.cz_energy_spot_prices.sensor] 7eec7d80-fcaa-4621-aafb-fce830c0a9c3_spot_cheapest_electricity_today initialized with 2.36 at 2026-02-02T01:00:00+00:00
+2026-02-02 16:13:15.034 DEBUG (MainThread) [custom_components.cz_energy_spot_prices.sensor] 7eec7d80-fcaa-4621-aafb-fce830c0a9c3_spot_cheapest_electricity_tomorrow initialized with 2.26 at 2026-02-03T02:00:00+00:00
+2026-02-02 16:13:15.034 DEBUG (MainThread) [custom_components.cz_energy_spot_prices.sensor] 7eec7d80-fcaa-4621-aafb-fce830c0a9c3_spot_most_expensive_electricity_today initialized with 3.98 at 2026-02-02T07:00:00+00:00
+2026-02-02 16:13:15.034 DEBUG (MainThread) [custom_components.cz_energy_spot_prices.sensor] 7eec7d80-fcaa-4621-aafb-fce830c0a9c3_spot_most_expensive_electricity_tomorrow initialized with 3.95 at 2026-02-03T08:00:00+00:00
+2026-02-02 16:13:15.034 DEBUG (MainThread) [custom_components.cz_energy_spot_prices.sensor] 7eec7d80-fcaa-4621-aafb-fce830c0a9c3_current_spot_electricity_hour_order updated from None to 22
+2026-02-02 16:13:15.095 INFO (MainThread) [homeassistant.setup] Setting up solar_mind
+2026-02-02 16:13:15.095 INFO (MainThread) [homeassistant.setup] Setup of domain solar_mind took 0.00 seconds
+2026-02-02 16:13:15.095 DEBUG (MainThread) [custom_components.solar_mind] Setting up Solar Mind integration: bb72d6cf-0b59-4118-8776-721d5cfc6886
+2026-02-02 16:13:15.105 DEBUG (MainThread) [custom_components.solar_mind.planner] Created energy plan: 48 hours, PV: 44.7 kWh, Load: 18.3 kWh, Import: 0.0 kWh, Export: 17.5 kWh
+2026-02-02 16:13:15.105 DEBUG (MainThread) [custom_components.solar_mind.coordinator] Generated energy plan: 48 hours, PV: 44.7 kWh, Load: 18.3 kWh
+2026-02-02 16:13:15.105 DEBUG (MainThread) [custom_components.solar_mind.coordinator] Recorded actuals for hour 14:00, total history: 1 entries
+2026-02-02 16:13:15.106 DEBUG (MainThread) [custom_components.solar_mind.coordinator] Finished fetching solar_mind data in 0.007 seconds (success: True)
+2026-02-02 16:13:15.119 INFO (MainThread) [homeassistant.components.sensor] Setting up solar_mind.sensor
+2026-02-02 16:13:15.131 INFO (MainThread) [homeassistant.bootstrap] Home Assistant initialized in 3.05s
+2026-02-02 16:13:15.132 INFO (MainThread) [homeassistant.core] Starting Home Assistant 2026.1.3
+2026-02-02 16:14:32.888 WARNING (MainThread) [homeassistant.components.http.ban] Login attempt or request with invalid authentication from 172.67.68.90 (172.67.68.90). Requested URL: '/auth/login_flow/f776cb9ec68522c2ec5ff436eb565ef2'. (Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36)
+2026-02-02 16:15:00.278 DEBUG (MainThread) [custom_components.cz_energy_spot_prices.coordinator] Manually updated Czech Energy Spot Prices [EntryCoordinator (<EnergyUnit.kWh: 'kWh'>, <Currency.CZK: 'CZK'>, <Commodity.Electricity: 'electricity'>, <SpotRateIntervalType.Hour: '60min'>)] data
+2026-02-02 16:15:00.278 DEBUG (MainThread) [custom_components.cz_energy_spot_prices.sensor] Setting 7eec7d80-fcaa-4621-aafb-fce830c0a9c3_current_spot_electricity_price to 3.917646000000000114553699859
+2026-02-02 16:15:00.278 DEBUG (MainThread) [custom_components.cz_energy_spot_prices.sensor] Setting 7eec7d80-fcaa-4621-aafb-fce830c0a9c3_current_spot_electricity_price _attr_available to 3.917646000000000114553699859
+2026-02-02 16:15:00.278 DEBUG (MainThread) [custom_components.cz_energy_spot_prices.sensor] 7eec7d80-fcaa-4621-aafb-fce830c0a9c3_spot_cheapest_electricity_today unchanged with 2.36 at 2026-02-02T01:00:00+00:00
+2026-02-02 16:15:00.279 DEBUG (MainThread) [custom_components.cz_energy_spot_prices.sensor] 7eec7d80-fcaa-4621-aafb-fce830c0a9c3_spot_cheapest_electricity_tomorrow unchanged with 2.26 at 2026-02-03T02:00:00+00:00
+2026-02-02 16:15:00.279 DEBUG (MainThread) [custom_components.cz_energy_spot_prices.sensor] 7eec7d80-fcaa-4621-aafb-fce830c0a9c3_spot_most_expensive_electricity_today unchanged with 3.98 at 2026-02-02T07:00:00+00:00
+2026-02-02 16:15:00.279 DEBUG (MainThread) [custom_components.cz_energy_spot_prices.sensor] 7eec7d80-fcaa-4621-aafb-fce830c0a9c3_spot_most_expensive_electricity_tomorrow unchanged with 3.95 at 2026-02-03T08:00:00+00:00
+2026-02-02 16:15:00.279 DEBUG (MainThread) [custom_components.cz_energy_spot_prices.sensor] 7eec7d80-fcaa-4621-aafb-fce830c0a9c3_current_spot_electricity_hour_order unchanged with 22
+2026-02-02 16:15:10.411 INFO (Recorder) [homeassistant.components.sensor.recorder] Detected new cycle for sensor.solax_simulator_energy_today_2, value dropped from 0.31 to 0.0, triggered by state with last_updated set to 2026-02-02T15:13:14.845728+00:00
+2026-02-02 16:15:10.411 INFO (Recorder) [homeassistant.components.sensor.recorder] Detected new cycle for sensor.solax_simulator_energy_total_2, value dropped from 0.31 to 0.0, triggered by state with last_updated set to 2026-02-02T15:13:14.845903+00:00
+2026-02-02 16:18:15.083 DEBUG (MainThread) [custom_components.solar_mind.planner] Created energy plan: 48 hours, PV: 44.7 kWh, Load: 18.3 kWh, Import: 0.0 kWh, Export: 17.6 kWh
+2026-02-02 16:18:15.084 DEBUG (MainThread) [custom_components.solar_mind.coordinator] Generated energy plan: 48 hours, PV: 44.7 kWh, Load: 18.3 kWh
+2026-02-02 16:18:15.084 DEBUG (MainThread) [custom_components.solar_mind.coordinator] Finished fetching solar_mind data in 0.006 seconds (success: True)
+2026-02-02 16:23:15.081 DEBUG (MainThread) [custom_components.solar_mind.planner] Created energy plan: 48 hours, PV: 44.7 kWh, Load: 18.3 kWh, Import: 0.0 kWh, Export: 17.7 kWh
+2026-02-02 16:23:15.082 DEBUG (MainThread) [custom_components.solar_mind.coordinator] Generated energy plan: 48 hours, PV: 44.7 kWh, Load: 18.3 kWh
+2026-02-02 16:23:15.082 DEBUG (MainThread) [custom_components.solar_mind.coordinator] Finished fetching solar_mind data in 0.009 seconds (success: True)
+2026-02-02 16:28:15.090 DEBUG (MainThread) [custom_components.solar_mind.planner] Created energy plan: 48 hours, PV: 44.7 kWh, Load: 18.3 kWh, Import: 0.0 kWh, Export: 17.8 kWh
+2026-02-02 16:28:15.090 DEBUG (MainThread) [custom_components.solar_mind.coordinator] Generated energy plan: 48 hours, PV: 44.7 kWh, Load: 18.3 kWh
+2026-02-02 16:28:15.090 DEBUG (MainThread) [custom_components.solar_mind.coordinator] Finished fetching solar_mind data in 0.010 seconds (success: True)
+2026-02-02 16:30:00.285 DEBUG (MainThread) [custom_components.cz_energy_spot_prices.coordinator] Manually updated Czech Energy Spot Prices [EntryCoordinator (<EnergyUnit.kWh: 'kWh'>, <Currency.CZK: 'CZK'>, <Commodity.Electricity: 'electricity'>, <SpotRateIntervalType.Hour: '60min'>)] data
+2026-02-02 16:30:00.285 DEBUG (MainThread) [custom_components.cz_energy_spot_prices.sensor] Setting 7eec7d80-fcaa-4621-aafb-fce830c0a9c3_current_spot_electricity_price to 3.917646000000000114553699859
+2026-02-02 16:30:00.286 DEBUG (MainThread) [custom_components.cz_energy_spot_prices.sensor] Setting 7eec7d80-fcaa-4621-aafb-fce830c0a9c3_current_spot_electricity_price _attr_available to 3.917646000000000114553699859
+2026-02-02 16:30:00.286 DEBUG (MainThread) [custom_components.cz_energy_spot_prices.sensor] 7eec7d80-fcaa-4621-aafb-fce830c0a9c3_spot_cheapest_electricity_today unchanged with 2.36 at 2026-02-02T01:00:00+00:00
+2026-02-02 16:30:00.286 DEBUG (MainThread) [custom_components.cz_energy_spot_prices.sensor] 7eec7d80-fcaa-4621-aafb-fce830c0a9c3_spot_cheapest_electricity_tomorrow unchanged with 2.26 at 2026-02-03T02:00:00+00:00
+2026-02-02 16:30:00.286 DEBUG (MainThread) [custom_components.cz_energy_spot_prices.sensor] 7eec7d80-fcaa-4621-aafb-fce830c0a9c3_spot_most_expensive_electricity_today unchanged with 3.98 at 2026-02-02T07:00:00+00:00
+2026-02-02 16:30:00.286 DEBUG (MainThread) [custom_components.cz_energy_spot_prices.sensor] 7eec7d80-fcaa-4621-aafb-fce830c0a9c3_spot_most_expensive_electricity_tomorrow unchanged with 3.95 at 2026-02-03T08:00:00+00:00
+2026-02-02 16:30:00.286 DEBUG (MainThread) [custom_components.cz_energy_spot_prices.sensor] 7eec7d80-fcaa-4621-aafb-fce830c0a9c3_current_spot_electricity_hour_order unchanged with 22
+2026-02-02 16:33:15.088 DEBUG (MainThread) [custom_components.solar_mind.planner] Created energy plan: 48 hours, PV: 44.7 kWh, Load: 18.3 kWh, Import: 0.0 kWh, Export: 17.9 kWh
+2026-02-02 16:33:15.088 DEBUG (MainThread) [custom_components.solar_mind.coordinator] Generated energy plan: 48 hours, PV: 44.7 kWh, Load: 18.3 kWh
+2026-02-02 16:33:15.088 DEBUG (MainThread) [custom_components.solar_mind.coordinator] Finished fetching solar_mind data in 0.010 seconds (success: True)
+2026-02-02 16:38:15.081 DEBUG (MainThread) [custom_components.solar_mind.planner] Created energy plan: 48 hours, PV: 44.7 kWh, Load: 18.3 kWh, Import: 0.0 kWh, Export: 17.9 kWh
+2026-02-02 16:38:15.081 DEBUG (MainThread) [custom_components.solar_mind.coordinator] Generated energy plan: 48 hours, PV: 44.7 kWh, Load: 18.3 kWh
+2026-02-02 16:38:15.081 DEBUG (MainThread) [custom_components.solar_mind.coordinator] Finished fetching solar_mind data in 0.011 seconds (success: True)

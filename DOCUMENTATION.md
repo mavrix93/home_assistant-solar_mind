@@ -14,7 +14,14 @@ This document is aimed at **senior Python developers** who are new to the Home A
 6. [Solax Entities: What They Are and What They Do](#6-solax-entities-what-they-are-and-what-they-do)
 7. [How Solar Charging Works in This Project](#7-how-solar-charging-works-in-this-project)
 8. [Decision Flow Charts](#8-decision-flow-charts)
-9. [Further Reading](#9-further-reading)
+9. [Dashboard and Custom Cards](#9-dashboard-and-custom-cards)
+10. [Events System](#10-events-system)
+11. [User Preferences and Away Periods](#11-user-preferences-and-away-periods)
+12. [System Health Monitoring](#12-system-health-monitoring)
+13. [Milestones and Recommendations](#13-milestones-and-recommendations)
+14. [Historical Data and Learning](#14-historical-data-and-learning)
+15. [New Services Reference](#15-new-services-reference)
+16. [Further Reading](#16-further-reading)
 
 ---
 
@@ -680,7 +687,298 @@ flowchart TB
 
 ---
 
-## 9. Further Reading
+## 9. Dashboard and Custom Cards
+
+Solar Mind includes a comprehensive dashboard with custom Lovelace cards for visualizing energy data.
+
+### 9.1 Dashboard Tabs
+
+The default dashboard includes seven tabs:
+
+| Tab | Purpose |
+|-----|---------|
+| **Overview** | Real-time energy flow, battery status, weather, historical graphs (24h), and quick actions |
+| **Planning** | 24-hour forecast (PV, load, battery %), milestones, and appliance recommendations |
+| **Graphs** | Full visibility: expected (forecast) chart and actual (historical) graphs for battery, PV, load, grid (24h–7d) |
+| **Events** | System event timeline and away period management |
+| **History** | Historical graphs (24h and 7d), forecast accuracy, and prediction vs actual comparisons |
+| **Health** | System health score, temperatures, warnings, and diagnostics |
+| **Settings** | Configuration guidance and manual controls |
+
+### 9.2 Custom Lovelace Cards
+
+Solar Mind provides custom cards located in `custom_components/solar_mind/www/`:
+
+| Card | Description |
+|------|-------------|
+| `solar-mind-energy-flow-card` | Visual diagram showing energy flow between solar, battery, grid, and house |
+| `solar-mind-events-card` | Timeline of system events (charges, discharges, weather changes, etc.) |
+| `solar-mind-forecast-card` | Charts showing expected PV generation, house load, and predicted battery level (SOC) over the next 24h |
+| `solar-mind-cheapest-hours-card` | Cheapest hours today and price forecast (future data only; use instead of entity more-info) |
+| `solar-mind-milestones-card` | Upcoming milestones and appliance recommendations |
+| `solar-mind-health-card` | System health score ring with warnings and diagnostics |
+
+### 9.3 Future data: avoid history-stats
+
+Sensors that represent **future or forecast data** (e.g. cheapest hours today, price forecast, next planned charge, PV/load forecasts) are configured with `state_class: None`. This prevents Home Assistant from treating them as time-series and showing a **history graph** in the entity more-info dialog, which would be misleading for forecast data.
+
+**Use the custom Lovelace cards** for these entities instead of opening the entity popup:
+
+- **Cheapest hours / price forecast:** Add the **Solar Mind Cheapest Hours** card (`solar-mind-cheapest-hours-card`). It shows today’s cheapest hours and an optional 24h price forecast bar (future data only, no history).
+- **24h energy forecast:** Use the **Solar Mind Forecast** card with `sensor.solar_mind_hourly_plan` for expected PV, load, predicted battery %, and planned actions.
+
+### 9.4 Expected vs historical graphs
+
+- **Expected (forecast):** The **Solar Mind Forecast** card shows expected PV generation (W), expected house load (W), and **expected battery level (%)** over the next 24 hours, plus the planned action timeline (charge/discharge/self-use/idle).
+- **Actual (historical):** The dashboard uses Home Assistant **history-graph** cards for recorded values: battery level, PV power, house load, and grid power. These appear on the **Overview** tab (24h), the **Graphs** tab (24h–7d), and the **History** tab (24h and 7d). Entities must be recorded by the Recorder (e.g. Solax simulator or real inverter sensors).
+
+Example:
+
+```yaml
+type: custom:solar-mind-cheapest-hours-card
+entity: sensor.solar_mind_cheapest_hours_today
+price_forecast_entity: sensor.solar_mind_price_forecast
+title: Cheapest Hours Today
+show_prices: true
+show_price_chart: true
+```
+
+**Installation:**
+
+1. The dev seed script (`dev/seed_storage.py`) automatically copies cards to `dev/config/www/solar-mind/`
+2. Cards are registered in the Lovelace configuration as resources
+3. For production, copy the `www` folder to your Home Assistant `config/www/solar-mind/`
+4. For production, run `./scripts/deploy.sh` (or use -h/-p); it syncs both the integration and the www folder to `config/www/solar-mind/`. Then add the resource once in Lovelace.
+
+**Example card configuration:**
+
+```yaml
+type: custom:solar-mind-energy-flow-card
+entity: sensor.solar_mind_energy_flow
+title: Energy Flow
+```
+
+---
+
+## 10. Events System
+
+Solar Mind tracks system events for monitoring and debugging.
+
+### 10.1 Event Types
+
+| Event Type | Description |
+|------------|-------------|
+| `strategy_changed` | Active strategy was changed |
+| `battery_full` | Battery reached maximum SOC |
+| `battery_low` | Battery reached minimum SOC |
+| `charge_started` | Grid charging began |
+| `charge_completed` | Grid charging ended |
+| `discharge_started` | Grid discharge began |
+| `discharge_completed` | Grid discharge ended |
+| `weather_changed` | Weather forecast changed significantly |
+| `price_spike` | Electricity price 50%+ above average |
+| `price_drop` | Electricity price 50%+ below average |
+| `surplus_expected` | Solar surplus predicted |
+| `away_mode_started` | Away period became active |
+| `away_mode_ended` | Away period ended |
+| `system_error` | System error occurred |
+| `system_warning` | System warning triggered |
+| `milestone_reached` | Milestone event occurred |
+
+### 10.2 Event Sensors
+
+| Sensor | Description |
+|--------|-------------|
+| `sensor.solar_mind_recent_events_count` | Count of recent events (attributes contain full event list) |
+| `sensor.solar_mind_latest_event` | Title of most recent event |
+
+---
+
+## 11. User Preferences and Away Periods
+
+Solar Mind can optimize based on user schedules and preferences.
+
+### 11.1 Away Periods
+
+When you're away from home, the system reduces expected load and optimizes accordingly.
+
+**Adding an away period:**
+
+```yaml
+service: solar_mind.add_away_period
+data:
+  start: "2024-01-15 08:00:00"
+  end: "2024-01-17 18:00:00"
+  label: "Vacation"
+  reduce_load_percent: 70
+```
+
+**Removing an away period:**
+
+```yaml
+service: solar_mind.remove_away_period
+data:
+  period_id: "a1b2c3d4"  # ID from away_periods sensor attributes
+```
+
+### 11.2 High-Demand Appliances
+
+Register appliances for optimal scheduling recommendations:
+
+**Adding an appliance:**
+
+```yaml
+service: solar_mind.set_high_demand_appliance
+data:
+  name: "Water heater"
+  power_w: 2000
+```
+
+**Removing an appliance:**
+
+```yaml
+service: solar_mind.remove_high_demand_appliance
+data:
+  name: "Water heater"
+```
+
+The system will recommend the best times to run these appliances based on:
+- Solar surplus availability
+- Electricity prices
+- Battery state
+
+### 11.3 Related Sensors
+
+| Sensor | Description |
+|--------|-------------|
+| `sensor.solar_mind_away_periods` | Count of configured away periods |
+| `sensor.solar_mind_best_water_heater_time` | Recommended time for water heater |
+| `sensor.solar_mind_surplus_start_time` | When solar surplus is expected |
+| `sensor.solar_mind_next_milestone` | Next upcoming milestone/recommendation |
+
+---
+
+## 12. System Health Monitoring
+
+Solar Mind monitors system health and provides diagnostics.
+
+### 12.1 Health Score
+
+The system health score (0-100%) is calculated based on:
+- Active warnings (-5 points each)
+- Recent errors (-2 points each, max 20)
+- Communication errors (-2 points each, max 20)
+- High battery temperature >45°C (-10 points)
+- High inverter temperature >60°C (-10 points)
+
+### 12.2 Health Sensors
+
+| Sensor | Description |
+|--------|-------------|
+| `sensor.solar_mind_system_health_score` | Overall health score (0-100%) |
+| `sensor.solar_mind_battery_temperature` | Battery temperature (if available) |
+| `sensor.solar_mind_inverter_temperature` | Inverter temperature (if available) |
+| `sensor.solar_mind_charge_cycles_today` | Number of charge cycles today |
+| `sensor.solar_mind_active_warnings` | Count of active warnings |
+
+### 12.3 Warnings
+
+Warnings are automatically triggered for:
+- Battery temperature > 45°C
+- Inverter temperature > 60°C
+- Battery at minimum SOC
+- Communication failures
+
+---
+
+## 13. Milestones and Recommendations
+
+Solar Mind calculates upcoming milestones to help users plan activities.
+
+### 13.1 Milestone Types
+
+| Type | Description |
+|------|-------------|
+| `surplus_start` | When solar generation will exceed consumption |
+| `cheap_charge_time` | Next planned charging window |
+| `battery_full` | When battery is expected to be fully charged |
+| `best_appliance_time` | Optimal time for high-demand appliances |
+
+### 13.2 Appliance Recommendations
+
+For registered appliances, the system calculates optimal run times by scoring each hour:
+
+```
+score = (surplus_energy / appliance_power + 1) × price_factor
+```
+
+Where:
+- `surplus_energy` = PV forecast - load forecast
+- `price_factor` = 1 / (price + 0.01)
+
+The hour with the highest score is recommended.
+
+---
+
+## 14. Historical Data and Learning
+
+Solar Mind tracks prediction accuracy and can learn from mistakes.
+
+### 14.1 Data Persistence
+
+- **Plan History**: Last 168 hours (7 days) of hourly comparisons
+- **User Preferences**: Persisted to `.storage/solar_mind_{entry_id}.json`
+- **Events**: Last 500 system events (in-memory)
+
+### 14.2 Accuracy Metrics
+
+| Metric | Description |
+|--------|-------------|
+| PV Forecast Accuracy | MAPE (Mean Absolute Percentage Error) for PV predictions |
+| Load Forecast Accuracy | MAPE for load predictions |
+| 7-Day Forecast Accuracy | Rolling 7-day accuracy score |
+
+### 14.3 Related Sensors
+
+| Sensor | Description |
+|--------|-------------|
+| `sensor.solar_mind_forecast_accuracy` | Current PV forecast accuracy (%) |
+| `sensor.solar_mind_historical_comparison` | Summary of prediction accuracy |
+| `sensor.solar_mind_hourly_plan` | Full hourly plan with predictions |
+| `sensor.solar_mind_price_forecast` | Price forecast summary |
+
+---
+
+## 15. New Services Reference
+
+### Away Period Management
+
+| Service | Description |
+|---------|-------------|
+| `solar_mind.add_away_period` | Add an away period |
+| `solar_mind.remove_away_period` | Remove an away period |
+
+### Appliance Management
+
+| Service | Description |
+|---------|-------------|
+| `solar_mind.set_high_demand_appliance` | Add/update a high-demand appliance |
+| `solar_mind.remove_high_demand_appliance` | Remove an appliance |
+
+### Manual Control (existing)
+
+| Service | Description |
+|---------|-------------|
+| `solar_mind.charge_battery_from_grid` | Force charge from grid |
+| `solar_mind.discharge_battery_to_grid` | Discharge to grid |
+| `solar_mind.set_self_use` | Enable self-use mode |
+| `solar_mind.set_battery_for_house` | Alias for self-use |
+| `solar_mind.set_house_use_grid` | House from grid (preserve battery) |
+| `solar_mind.apply_strategy` | Re-run and apply current strategy |
+
+---
+
+## 16. Further Reading
 
 - **Home Assistant developer docs:** [developers.home-assistant.io](https://developers.home-assistant.io/)
 - **Creating an integration:** [Creating your first integration](https://developers.home-assistant.io/docs/creating_component_index/)

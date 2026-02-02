@@ -45,6 +45,7 @@ cp .env.example .env
 ```
 
 Options: `-h HOST`, `-p PATH`, `-r` (restart HA), `--dry-run`. See `.env.example` for all variables.  
+The script also syncs dashboard cards to `config/www/solar-mind/`; add the resource `/local/solar-mind/solar-mind-cards.js` once in Settings → Dashboards → Resources.  
 **Repo safety:** `.env` is listed in `.gitignore`; never commit it. The repository can be published without leaking local hostnames or paths.
 
 ## Configuration

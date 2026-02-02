@@ -7,7 +7,7 @@ import logging
 import math
 import random
 from dataclasses import dataclass, field
-from datetime import date, datetime, time, timedelta
+from datetime import date, datetime, time, timedelta, timezone
 from typing import Any, Callable
 
 from .const import (
@@ -402,7 +402,7 @@ class SolaxSimulatorCore:
         """Trigger/apply the remote control settings."""
         self._state.remote_control_active = True
         self._state.remote_control_expires = (
-            datetime.now() + timedelta(seconds=self._state.autorepeat_duration)
+            datetime.now(timezone.utc) + timedelta(seconds=self._state.autorepeat_duration)
         )
 
     def trigger_passive_update(self) -> None:
@@ -410,7 +410,7 @@ class SolaxSimulatorCore:
         self._state.remote_control_active = True
         self._state.remote_control_mode = RemoteControlMode.GRID_CONTROL
         self._state.active_power_setpoint = self._state.passive_grid_power
-        self._state.remote_control_expires = datetime.now() + timedelta(minutes=2)
+        self._state.remote_control_expires = datetime.now(timezone.utc) + timedelta(minutes=2)
 
     def set_weather(self, weather: SimulatedWeather | str) -> None:
         """Set the simulated weather condition."""

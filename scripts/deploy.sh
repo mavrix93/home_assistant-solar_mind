@@ -83,13 +83,19 @@ if [ ! -d "$SOURCE_DIR" ]; then
     exit 1
 fi
 
-# Build destination path
+# Build destination paths
 DEST_DIR="$REMOTE_PATH/custom_components/solar_mind"
+WWW_SOURCE_DIR="$PROJECT_ROOT/custom_components/solar_mind/www"
+WWW_DEST_DIR="$REMOTE_PATH/www/solar-mind"
 
-echo -e "${GREEN}Solar Mind Deployment${NC}"
+echo -e "${GREEN}Solar Mind Deployment (Integration + Dashboard)${NC}"
 echo "================================"
-echo "Source:      $SOURCE_DIR"
-echo "Destination: $REMOTE_HOST:$DEST_DIR"
+echo "Integration: $SOURCE_DIR -> $REMOTE_HOST:$DEST_DIR"
+if [ -d "$WWW_SOURCE_DIR" ]; then
+    echo "Dashboard:   $WWW_SOURCE_DIR -> $REMOTE_HOST:$WWW_DEST_DIR"
+else
+    echo "Dashboard:   (skipped - www not found)"
+fi
 echo ""
 
 if [ "$DRY_RUN" = true ]; then
@@ -116,17 +122,20 @@ else
     echo -e "${YELLOW}SKIPPED (dry run)${NC}"
 fi
 
-# Create destination directory if needed
+# Create destination directories if needed
 echo -n "Creating destination directory... "
 if [ "$DRY_RUN" = false ]; then
     ssh "$REMOTE_HOST" "mkdir -p '$DEST_DIR'" 2>/dev/null
+    if [ -d "$WWW_SOURCE_DIR" ]; then
+        ssh "$REMOTE_HOST" "mkdir -p '$WWW_DEST_DIR'" 2>/dev/null
+    fi
     echo -e "${GREEN}OK${NC}"
 else
     echo -e "${YELLOW}SKIPPED (dry run)${NC}"
 fi
 
-# Sync files
-echo "Syncing files..."
+# Sync integration files
+echo "Syncing integration..."
 RSYNC_OPTS="-avz --delete"
 RSYNC_OPTS="$RSYNC_OPTS --exclude '__pycache__'"
 RSYNC_OPTS="$RSYNC_OPTS --exclude '*.pyc'"
@@ -142,6 +151,19 @@ fi
 
 # shellcheck disable=SC2086
 rsync $RSYNC_OPTS "$SOURCE_DIR/" "$REMOTE_HOST:$DEST_DIR/"
+
+# Sync dashboard (www) if present
+if [ -d "$WWW_SOURCE_DIR" ]; then
+    echo "Syncing dashboard (www)..."
+    WWW_RSYNC_OPTS="-avz --delete"
+    if [ "$DRY_RUN" = true ]; then
+        WWW_RSYNC_OPTS="$WWW_RSYNC_OPTS --dry-run"
+    fi
+    # shellcheck disable=SC2086
+    rsync $WWW_RSYNC_OPTS "$WWW_SOURCE_DIR/" "$REMOTE_HOST:$WWW_DEST_DIR/"
+else
+    echo "Dashboard www missing, skipping dashboard sync."
+fi
 
 echo ""
 echo -e "${GREEN}Files synced successfully!${NC}"
@@ -177,3 +199,4 @@ fi
 
 echo ""
 echo -e "${GREEN}Deployment complete!${NC}"
+echo "If using the dashboard: add Lovelace resource /local/solar-mind/solar-mind-cards.js (JavaScript Module) once in Settings → Dashboards → Resources."

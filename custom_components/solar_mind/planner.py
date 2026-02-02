@@ -65,6 +65,24 @@ LOAD_PATTERN_WEEKEND = {
 }
 
 
+def _build_historical_load_profile(plan_history: PlanHistory) -> dict[tuple[int, int], float]:
+    """
+    Build average load (Wh) per (hour_of_day, weekday) from plan history actuals.
+    Used as primary input for load forecasting when available.
+    """
+    slot_sums: dict[tuple[int, int], list[float]] = {}
+    for comp in plan_history.comparisons:
+        if not comp.actual or comp.actual.load_actual_wh is None:
+            continue
+        key = (comp.hour.hour, comp.hour.weekday())
+        slot_sums.setdefault(key, []).append(comp.actual.load_actual_wh)
+    return {
+        key: sum(values) / len(values)
+        for key, values in slot_sums.items()
+        if values
+    }
+
+
 class EnergyPlanner:
     """Creates optimal energy plans based on prices, weather, and system state."""
 
@@ -159,23 +177,32 @@ class EnergyPlanner:
         
         return pv_energy_wh, solar_potential, condition
 
-    def forecast_house_load(self, hour: datetime) -> float:
+    def forecast_house_load(
+        self,
+        hour: datetime,
+        historical_avg_wh: dict[tuple[int, int], float] | None = None,
+    ) -> float:
         """
         Forecast house load for a specific hour.
-        
+
+        Prefer historical average load for the same (hour_of_day, weekday) when
+        available; otherwise use configured average_load with weekday/weekend patterns.
+
         Returns: expected load in Wh
         """
         hour_of_day = hour.hour
         weekday = hour.weekday()
-        
-        # Use different patterns for weekday/weekend
+        key = (hour_of_day, weekday)
+
+        if historical_avg_wh and key in historical_avg_wh:
+            return historical_avg_wh[key]
+
+        # Fallback: pattern-based estimate from configured average load
         if weekday < 5:  # Monday-Friday
             multiplier = LOAD_PATTERN_WEEKDAY.get(hour_of_day, 1.0)
         else:  # Saturday-Sunday
             multiplier = LOAD_PATTERN_WEEKEND.get(hour_of_day, 1.0)
-        
-        load_w = self.average_load * multiplier
-        return load_w  # 1 hour = Wh
+        return self.average_load * multiplier  # 1 hour = Wh
 
     def _is_in_charge_window(self, hour: int) -> bool:
         """Check if hour is within the charge window."""
@@ -199,39 +226,48 @@ class EnergyPlanner:
         current_soc: float,
         prices: PriceData,
         weather: WeatherForecast,
+        plan_history: PlanHistory | None = None,
     ) -> EnergyPlan:
         """
         Create an optimal energy plan for the next 24-48 hours.
-        
+
         The plan optimizes for:
         1. Minimize cost (charge when cheap, avoid buying when expensive)
         2. Maximize revenue (sell when expensive, if discharge allowed)
         3. Maximize self-consumption of solar
+
+        When plan_history is provided, load forecasts use historical actual load
+        per (hour_of_day, weekday) as primary source; otherwise pattern-based
+        estimates are used.
         """
         plan = EnergyPlan(created_at=current_time)
         entries: list[HourlyPlanEntry] = []
-        
+
+        historical_avg_wh = (
+            _build_historical_load_profile(plan_history) if plan_history else None
+        )
+
         # Start from current hour
         start_hour = current_time.replace(minute=0, second=0, microsecond=0)
-        
+
         # Determine plan horizon (24h if no tomorrow prices, 48h if available)
         horizon_hours = 48 if prices.tomorrow_available else 24
-        
+
         # Collect all prices for ranking
         all_prices = [p.price for p in prices.today + prices.tomorrow]
-        
+
         # Track battery state through the plan
         simulated_soc = current_soc if current_soc is not None else 50.0
-        
+
         # First pass: calculate base forecasts
         hourly_data: list[dict[str, Any]] = []
         for i in range(horizon_hours):
             hour = start_hour + timedelta(hours=i)
-            
+
             pv_wh, solar_potential, condition = self.forecast_pv_generation(
                 hour, weather
             )
-            load_wh = self.forecast_house_load(hour)
+            load_wh = self.forecast_house_load(hour, historical_avg_wh)
             price = prices.get_price_at(hour)
             
             hourly_data.append({

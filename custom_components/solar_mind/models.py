@@ -1,7 +1,7 @@
 """Data models for the Solar Mind integration."""
 
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from enum import Enum
 from typing import Any
 
@@ -15,6 +15,282 @@ class PlannedAction(str, Enum):
     DISCHARGE = "discharge"
     SELF_USE = "self_use"
     IDLE = "idle"
+
+
+class EventType(str, Enum):
+    """Types of system events for the timeline."""
+    
+    STRATEGY_CHANGED = "strategy_changed"
+    BATTERY_FULL = "battery_full"
+    BATTERY_LOW = "battery_low"
+    CHARGE_STARTED = "charge_started"
+    CHARGE_COMPLETED = "charge_completed"
+    DISCHARGE_STARTED = "discharge_started"
+    DISCHARGE_COMPLETED = "discharge_completed"
+    WEATHER_CHANGED = "weather_changed"
+    PRICE_SPIKE = "price_spike"
+    PRICE_DROP = "price_drop"
+    SURPLUS_EXPECTED = "surplus_expected"
+    AWAY_MODE_STARTED = "away_mode_started"
+    AWAY_MODE_ENDED = "away_mode_ended"
+    SYSTEM_ERROR = "system_error"
+    SYSTEM_WARNING = "system_warning"
+    MILESTONE_REACHED = "milestone_reached"
+
+
+class EventSeverity(str, Enum):
+    """Severity levels for events."""
+    
+    INFO = "info"
+    SUCCESS = "success"
+    WARNING = "warning"
+    ERROR = "error"
+
+
+@dataclass
+class SystemEvent:
+    """Represents a system event for the timeline."""
+    
+    timestamp: datetime
+    event_type: EventType
+    severity: EventSeverity
+    title: str
+    description: str
+    data: dict[str, Any] = field(default_factory=dict)
+    
+    def to_dict(self) -> dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
+        return {
+            "timestamp": self.timestamp.isoformat(),
+            "event_type": self.event_type.value,
+            "severity": self.severity.value,
+            "title": self.title,
+            "description": self.description,
+            "data": self.data,
+        }
+
+
+@dataclass
+class EventLog:
+    """Collection of system events with max capacity."""
+    
+    events: list[SystemEvent] = field(default_factory=list)
+    max_events: int = 500  # Keep last 500 events
+    
+    def add_event(self, event: SystemEvent) -> None:
+        """Add an event, removing old events if needed."""
+        self.events.append(event)
+        if len(self.events) > self.max_events:
+            self.events = self.events[-self.max_events:]
+    
+    def get_recent(self, count: int = 50) -> list[SystemEvent]:
+        """Get most recent events."""
+        return list(reversed(self.events[-count:]))
+    
+    def get_by_type(self, event_type: EventType, count: int = 20) -> list[SystemEvent]:
+        """Get recent events of a specific type."""
+        filtered = [e for e in reversed(self.events) if e.event_type == event_type]
+        return filtered[:count]
+    
+    def get_since(self, since: datetime) -> list[SystemEvent]:
+        """Get events since a specific time."""
+        return [e for e in self.events if e.timestamp >= since]
+    
+    def to_dict(self) -> dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
+        return {
+            "events": [e.to_dict() for e in self.events[-100:]],  # Last 100 for serialization
+            "total_count": len(self.events),
+        }
+
+
+@dataclass
+class AwayPeriod:
+    """Represents a period when the user is away from home."""
+    
+    id: str
+    start: datetime
+    end: datetime
+    label: str = ""
+    reduce_load_percent: float = 50.0  # Reduce expected load by this percentage
+    
+    def is_active(self, at_time: datetime | None = None) -> bool:
+        """Check if this away period is currently active."""
+        check_time = at_time or datetime.now(timezone.utc)
+        # Normalize to aware for comparison if one side is naive
+        if self.start.tzinfo is None and check_time.tzinfo is not None:
+            start = self.start.replace(tzinfo=timezone.utc)
+            end = self.end.replace(tzinfo=timezone.utc)
+            return start <= check_time <= end
+        if self.start.tzinfo is not None and check_time.tzinfo is None:
+            check_time = check_time.replace(tzinfo=timezone.utc)
+        return self.start <= check_time <= self.end
+    
+    def to_dict(self) -> dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
+        return {
+            "id": self.id,
+            "start": self.start.isoformat(),
+            "end": self.end.isoformat(),
+            "label": self.label,
+            "reduce_load_percent": self.reduce_load_percent,
+        }
+
+
+@dataclass
+class UserPreferences:
+    """User preferences and settings for optimization."""
+    
+    away_periods: list[AwayPeriod] = field(default_factory=list)
+    preferred_charge_times: list[int] = field(default_factory=list)  # Preferred hours for charging
+    avoid_discharge_times: list[int] = field(default_factory=list)  # Hours to avoid discharging
+    high_demand_appliances: dict[str, float] = field(default_factory=dict)  # Appliance: power in W
+    
+    def get_active_away_period(self, at_time: datetime | None = None) -> AwayPeriod | None:
+        """Get currently active away period if any."""
+        for period in self.away_periods:
+            if period.is_active(at_time):
+                return period
+        return None
+    
+    def add_away_period(self, period: AwayPeriod) -> None:
+        """Add an away period."""
+        # Remove any existing period with same ID
+        self.away_periods = [p for p in self.away_periods if p.id != period.id]
+        self.away_periods.append(period)
+        # Sort by start time
+        self.away_periods.sort(key=lambda p: p.start)
+    
+    def remove_away_period(self, period_id: str) -> bool:
+        """Remove an away period by ID."""
+        initial_len = len(self.away_periods)
+        self.away_periods = [p for p in self.away_periods if p.id != period_id]
+        return len(self.away_periods) < initial_len
+    
+    def to_dict(self) -> dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
+        return {
+            "away_periods": [p.to_dict() for p in self.away_periods],
+            "preferred_charge_times": self.preferred_charge_times,
+            "avoid_discharge_times": self.avoid_discharge_times,
+            "high_demand_appliances": self.high_demand_appliances,
+        }
+
+
+@dataclass
+class Milestone:
+    """Represents an upcoming milestone or recommendation."""
+    
+    timestamp: datetime
+    milestone_type: str  # e.g., "surplus_start", "best_charge_time", "best_appliance_time"
+    title: str
+    description: str
+    priority: int = 0  # Higher = more important
+    data: dict[str, Any] = field(default_factory=dict)
+    
+    def to_dict(self) -> dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
+        return {
+            "timestamp": self.timestamp.isoformat(),
+            "milestone_type": self.milestone_type,
+            "title": self.title,
+            "description": self.description,
+            "priority": self.priority,
+            "data": self.data,
+        }
+
+
+@dataclass
+class SystemHealth:
+    """System health and diagnostic information."""
+    
+    # Temperatures
+    battery_temperature: float | None = None
+    inverter_temperature: float | None = None
+    
+    # Battery health
+    battery_cycles: int | None = None
+    battery_capacity_remaining: float | None = None  # Percentage of original capacity
+    
+    # Operation counts
+    charge_cycles_today: int = 0
+    discharge_cycles_today: int = 0
+    mode_changes_today: int = 0
+    
+    # Warnings and errors
+    active_warnings: list[str] = field(default_factory=list)
+    recent_errors: list[dict[str, Any]] = field(default_factory=list)
+    
+    # Communication status
+    last_inverter_response: datetime | None = None
+    communication_errors_24h: int = 0
+    
+    # Performance metrics
+    grid_reliability_score: float = 100.0  # 0-100
+    forecast_accuracy_7d: float | None = None
+    
+    def add_warning(self, warning: str) -> None:
+        """Add a warning if not already present."""
+        if warning not in self.active_warnings:
+            self.active_warnings.append(warning)
+    
+    def clear_warning(self, warning: str) -> None:
+        """Remove a warning."""
+        self.active_warnings = [w for w in self.active_warnings if w != warning]
+    
+    def add_error(self, error: str, details: dict[str, Any] | None = None) -> None:
+        """Add an error to recent errors."""
+        error_entry = {
+            "timestamp": datetime.now().isoformat(),
+            "error": error,
+            "details": details or {},
+        }
+        self.recent_errors.append(error_entry)
+        # Keep only last 50 errors
+        if len(self.recent_errors) > 50:
+            self.recent_errors = self.recent_errors[-50:]
+    
+    @property
+    def health_score(self) -> float:
+        """Calculate overall health score (0-100)."""
+        score = 100.0
+        
+        # Deduct for active warnings
+        score -= len(self.active_warnings) * 5
+        
+        # Deduct for recent errors
+        score -= min(len(self.recent_errors), 10) * 2
+        
+        # Deduct for communication issues
+        if self.communication_errors_24h > 0:
+            score -= min(self.communication_errors_24h * 2, 20)
+        
+        # Temperature warnings
+        if self.battery_temperature and self.battery_temperature > 45:
+            score -= 10
+        if self.inverter_temperature and self.inverter_temperature > 60:
+            score -= 10
+        
+        return max(0, score)
+    
+    def to_dict(self) -> dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
+        return {
+            "battery_temperature": self.battery_temperature,
+            "inverter_temperature": self.inverter_temperature,
+            "battery_cycles": self.battery_cycles,
+            "battery_capacity_remaining": self.battery_capacity_remaining,
+            "charge_cycles_today": self.charge_cycles_today,
+            "discharge_cycles_today": self.discharge_cycles_today,
+            "mode_changes_today": self.mode_changes_today,
+            "active_warnings": self.active_warnings,
+            "recent_errors": self.recent_errors[-10:],  # Last 10 for serialization
+            "last_inverter_response": self.last_inverter_response.isoformat() if self.last_inverter_response else None,
+            "communication_errors_24h": self.communication_errors_24h,
+            "grid_reliability_score": self.grid_reliability_score,
+            "forecast_accuracy_7d": self.forecast_accuracy_7d,
+            "health_score": self.health_score,
+        }
 
 
 @dataclass
@@ -361,3 +637,8 @@ class SolarMindData:
     # System config for planning (from options)
     battery_capacity_wh: float = 10000.0
     max_pv_power_w: float = 10000.0
+    # New features
+    event_log: EventLog = field(default_factory=EventLog)
+    user_preferences: UserPreferences = field(default_factory=UserPreferences)
+    system_health: SystemHealth = field(default_factory=SystemHealth)
+    milestones: list[Milestone] = field(default_factory=list)

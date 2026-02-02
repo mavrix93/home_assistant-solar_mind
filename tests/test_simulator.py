@@ -1,7 +1,7 @@
 """Tests for the Solax PV Simulator."""
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock
 
 import pytest
@@ -85,7 +85,7 @@ class TestSolaxSimulator:
         
         assert simulator.state.remote_control_active is True
         assert simulator.state.remote_control_expires is not None
-        assert simulator.state.remote_control_expires > datetime.now()
+        assert simulator.state.remote_control_expires > datetime.now(timezone.utc)
 
     def test_set_weather(self, simulator):
         """Test setting simulated weather."""

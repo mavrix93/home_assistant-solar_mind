@@ -16,7 +16,11 @@ from custom_components.solar_mind.models import (
     SolaxState,
     WeatherForecast,
 )
-from custom_components.solar_mind.planner import EnergyPlanner, record_actual_hour
+from custom_components.solar_mind.planner import (
+    EnergyPlanner,
+    _build_historical_load_profile,
+    record_actual_hour,
+)
 
 
 class TestEnergyPlanner:
@@ -148,9 +152,76 @@ class TestEnergyPlanner:
         # Saturday at 10am (morning activity)
         saturday_morning = datetime(2025, 2, 1, 10, 0, 0)  # Saturday
         load = planner.forecast_house_load(saturday_morning)
-        
+
         # Should be around average * 1.1
         assert 500 < load < 700
+
+    def test_forecast_house_load_uses_historical_when_available(
+        self, planner
+    ) -> None:
+        """House load uses historical average when provided for that slot."""
+        # Monday 7am -> historical 700 Wh
+        historical = {(7, 0): 700.0}  # (hour_of_day, weekday)
+        monday_7am = datetime(2025, 2, 3, 7, 0, 0)  # Monday
+        load = planner.forecast_house_load(monday_7am, historical_avg_wh=historical)
+        assert load == 700.0
+
+        # Missing slot falls back to pattern
+        saturday_10am = datetime(2025, 2, 1, 10, 0, 0)  # Saturday
+        load_fallback = planner.forecast_house_load(
+            saturday_10am, historical_avg_wh=historical
+        )
+        assert load_fallback != 700.0
+        assert 400 < load_fallback < 700
+
+    def test_forecast_house_load_fallback_without_history(self, planner) -> None:
+        """House load uses pattern when no historical profile given."""
+        monday_7am = datetime(2025, 2, 3, 7, 0, 0)
+        load_without = planner.forecast_house_load(monday_7am)
+        load_with_none = planner.forecast_house_load(monday_7am, historical_avg_wh=None)
+        assert load_without == load_with_none
+        assert load_without > 0
+
+    def test_create_plan_uses_historical_load_when_available(
+        self, planner, sample_prices, sample_weather
+    ) -> None:
+        """create_plan uses historical load profile when plan_history provided."""
+        history = PlanHistory()
+        # Monday 2 Feb 2025 02:00 -> plan will include Monday 12:00 and 13:00
+        monday_2am = datetime(2025, 2, 3, 2, 0, 0)  # Monday
+        monday_12 = datetime(2025, 2, 3, 12, 0, 0)
+        monday_13 = datetime(2025, 2, 3, 13, 0, 0)
+        for h, load_wh in [(monday_12, 800.0), (monday_13, 600.0)]:
+            history.add_comparison(
+                PredictionComparison(
+                    hour=h,
+                    predicted=None,
+                    actual=HourlyActual(
+                        hour=h,
+                        action_taken=None,
+                        pv_actual_wh=None,
+                        load_actual_wh=load_wh,
+                        grid_import_actual_wh=None,
+                        grid_export_actual_wh=None,
+                        battery_soc_end=None,
+                        price_actual=None,
+                    ),
+                )
+            )
+        plan = planner.create_plan(
+            current_time=monday_2am,
+            current_soc=50.0,
+            prices=sample_prices,
+            weather=sample_weather,
+            plan_history=history,
+        )
+        assert plan is not None
+        for entry in plan.entries:
+            if entry.hour.hour == 12 and entry.hour.weekday() == 0:
+                assert entry.load_forecast_wh == 800.0
+            elif entry.hour.hour == 13 and entry.hour.weekday() == 0:
+                assert entry.load_forecast_wh == 600.0
+                break
 
     def test_create_plan_generates_entries(
         self, planner, sample_prices, sample_weather
@@ -158,14 +229,14 @@ class TestEnergyPlanner:
         """create_plan generates plan with entries."""
         current_time = datetime.now()
         current_soc = 50.0
-        
+
         plan = planner.create_plan(
             current_time=current_time,
             current_soc=current_soc,
             prices=sample_prices,
             weather=sample_weather,
         )
-        
+
         assert plan is not None
         assert len(plan.entries) == 24  # 24 hours without tomorrow prices
         assert plan.created_at is not None
@@ -355,6 +426,47 @@ class TestEnergyPlan:
         assert "created_at" in d
         assert "entries" in d
         assert len(d["entries"]) == 24
+
+
+def test_build_historical_load_profile() -> None:
+    """_build_historical_load_profile averages load_actual_wh per (hour, weekday)."""
+    history = PlanHistory()
+    # Monday 12:00 with 400 and 600 -> avg 500
+    history.add_comparison(
+        PredictionComparison(
+            hour=datetime(2025, 2, 3, 12, 0, 0),
+            predicted=None,
+            actual=HourlyActual(
+                hour=datetime(2025, 2, 3, 12, 0, 0),
+                action_taken=None,
+                pv_actual_wh=None,
+                load_actual_wh=400.0,
+                grid_import_actual_wh=None,
+                grid_export_actual_wh=None,
+                battery_soc_end=None,
+                price_actual=None,
+            ),
+        )
+    )
+    history.add_comparison(
+        PredictionComparison(
+            hour=datetime(2025, 2, 10, 12, 0, 0),
+            predicted=None,
+            actual=HourlyActual(
+                hour=datetime(2025, 2, 10, 12, 0, 0),
+                action_taken=None,
+                pv_actual_wh=None,
+                load_actual_wh=600.0,
+                grid_import_actual_wh=None,
+                grid_export_actual_wh=None,
+                battery_soc_end=None,
+                price_actual=None,
+            ),
+        )
+    )
+    profile = _build_historical_load_profile(history)
+    assert (12, 0) in profile  # Monday = 0
+    assert profile[(12, 0)] == 500.0
 
 
 class TestPlanHistory:

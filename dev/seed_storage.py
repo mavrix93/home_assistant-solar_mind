@@ -477,144 +477,177 @@ def create_config_entries(
 
 
 def create_lovelace() -> None:
-    """Create default Lovelace dashboard with Solax Simulator cards."""
+    """Create comprehensive Lovelace dashboard with Solar Mind cards."""
     data = {
         "version": 1,
         "minor_version": 1,
         "key": "lovelace",
         "data": {
             "config": {
-                "title": "Solar Mind Dev",
+                "title": "Solar Mind",
+                "resources": [
+                    {
+                        "url": "/local/solar-mind/solar-mind-cards.js",
+                        "type": "module",
+                    }
+                ],
                 "views": [
+                    # ============ TAB 1: OVERVIEW ============
                     {
                         "title": "Overview",
                         "path": "overview",
                         "icon": "mdi:solar-power",
+                        "type": "sections",
+                        "sections": [
+                            {
+                                "type": "grid",
+                                "cards": [
+                                    {
+                                        "type": "custom:solar-mind-energy-flow-card",
+                                        "entity": "sensor.solar_mind_energy_flow",
+                                        "title": "Energy Flow",
+                                    },
+                                ],
+                            },
+                        ],
                         "cards": [
+                            # Note: If you see "Entity not found", your entity IDs may have a _2 suffix (e.g. sensor.solar_mind_status_2). Check Developer Tools → States and search for solar_mind.
+                            # Status Overview
                             {
-                                "type": "markdown",
-                                "content": (
-                                    "## Solar Mind Development Sandbox\n\n"
-                                    "Pre-configured: **Solax PV Simulator**, **Czech Energy Spot Prices**, **Open-Meteo weather**, and **Solar Mind**. "
-                                    "If you see \"Configuration error\" or unavailable entities, see README → Local Sandbox."
-                                ),
+                                "type": "vertical-stack",
+                                "cards": [
+                                    {
+                                        "type": "gauge",
+                                        "entity": "sensor.solar_mind_battery_soc",
+                                        "name": "Battery",
+                                        "min": 0,
+                                        "max": 100,
+                                        "severity": {
+                                            "green": 50,
+                                            "yellow": 20,
+                                            "red": 10,
+                                        },
+                                    },
+                                    {
+                                        "type": "entities",
+                                        "title": "Current Status",
+                                        "entities": [
+                                            "sensor.solar_mind_status",
+                                            "sensor.solar_mind_recommended_action",
+                                            "sensor.solar_mind_energy_flow",
+                                            "sensor.solar_mind_current_price",
+                                        ],
+                                        "show_header_toggle": False,
+                                    },
+                                ],
                             },
+                            # Weather and Forecast
                             {
-                                "type": "weather",
-                                "entity": OPEN_METEO_WEATHER_ENTITY,
+                                "type": "vertical-stack",
+                                "cards": [
+                                    {
+                                        "type": "weather-forecast",
+                                        "entity": OPEN_METEO_WEATHER_ENTITY,
+                                        "show_forecast": True,
+                                        "forecast_type": "hourly",
+                                    },
+                                    {
+                                        "type": "horizontal-stack",
+                                        "cards": [
+                                            {
+                                                "type": "entity",
+                                                "entity": "sensor.solar_mind_pv_forecast_today",
+                                                "name": "PV Today",
+                                                "icon": "mdi:solar-power-variant",
+                                            },
+                                            {
+                                                "type": "entity",
+                                                "entity": "sensor.solar_mind_load_forecast_today",
+                                                "name": "Load Today",
+                                                "icon": "mdi:home-lightning-bolt",
+                                            },
+                                        ],
+                                    },
+                                ],
                             },
+                            # Quick Actions
                             {
                                 "type": "entities",
-                                "title": "Solax Simulator - Battery",
+                                "title": "Quick Actions",
+                                "entities": [
+                                    "sensor.solar_mind_active_strategy",
+                                    "sensor.solar_mind_next_milestone",
+                                    "sensor.solar_mind_best_time_for_water_heater",
+                                    "sensor.solar_mind_surplus_start_time",
+                                ],
+                                "show_header_toggle": False,
+                            },
+                            # Solax Simulator
+                            {
+                                "type": "entities",
+                                "title": "Inverter Status",
                                 "entities": [
                                     SOLAX_BATTERY_SOC,
                                     SOLAX_BATTERY_POWER,
-                                    SOLAX_REMOTECONTROL_POWER_CONTROL,
-                                    SOLAX_REMOTECONTROL_ACTIVE_POWER,
-                                ],
-                            },
-                            {
-                                "type": "entities",
-                                "title": "Solax Simulator - Power",
-                                "entities": [
                                     SOLAX_PV_POWER,
                                     SOLAX_GRID_POWER,
                                     SOLAX_HOUSE_LOAD,
                                 ],
+                                "show_header_toggle": False,
+                            },
+                            # Historical graphs (actual data)
+                            {
+                                "type": "history-graph",
+                                "title": "Battery level (24h)",
+                                "entities": [SOLAX_BATTERY_SOC],
+                                "hours_to_show": 24,
                             },
                             {
-                                "type": "entities",
-                                "title": "Solax Simulator - Controls",
-                                "entities": [
-                                    SOLAX_ENERGY_STORAGE_MODE,
-                                    SOLAX_REMOTECONTROL_TRIGGER,
-                                    SOLAX_REMOTECONTROL_AUTOREPEAT_DURATION,
-                                ],
+                                "type": "history-graph",
+                                "title": "PV generation & house load (24h)",
+                                "entities": [SOLAX_PV_POWER, SOLAX_HOUSE_LOAD],
+                                "hours_to_show": 24,
+                            },
+                            {
+                                "type": "history-graph",
+                                "title": "Grid power (24h)",
+                                "entities": [SOLAX_GRID_POWER],
+                                "hours_to_show": 24,
                             },
                         ],
                     },
+                    # ============ TAB 2: PLANNING ============
                     {
-                        "title": "Solar Mind",
-                        "path": "solar-mind",
-                        "icon": "mdi:brain",
-                        "cards": [
-                            {
-                                "type": "markdown",
-                                "content": (
-                                    "## Solar Mind Dashboard\n\n"
-                                    "Solar Mind is pre-configured with Czech OTE prices, Open-Meteo weather, and the Solax Simulator."
-                                ),
-                            },
-                            {
-                                "type": "entities",
-                                "title": "Solar Mind Status",
-                                "entities": [
-                                    "sensor.solar_mind_status",
-                                    "sensor.solar_mind_recommended_action",
-                                    "sensor.solar_mind_active_strategy",
-                                    "sensor.solar_mind_battery_soc",
-                                ],
-                                "show_header_toggle": False,
-                            },
-                            {
-                                "type": "entities",
-                                "title": "Price Information",
-                                "entities": [
-                                    "sensor.solar_mind_current_price",
-                                    "sensor.solar_mind_next_cheap_hour",
-                                    "sensor.solar_mind_cheapest_hours_today",
-                                ],
-                                "show_header_toggle": False,
-                            },
-                        ],
-                    },
-                    {
-                        "title": "Energy Plan",
-                        "path": "energy-plan",
+                        "title": "Planning",
+                        "path": "planning",
                         "icon": "mdi:calendar-clock",
                         "cards": [
+                            # Forecast Chart
                             {
-                                "type": "markdown",
-                                "content": (
-                                    "## Energy Forecast & Plan\n\n"
-                                    "24-48 hour energy planning based on weather forecast and spot prices. "
-                                    "Shows when to charge/discharge batteries, expected PV generation, and cost estimates."
-                                ),
+                                "type": "custom:solar-mind-forecast-card",
+                                "entity": "sensor.solar_mind_hourly_plan",
+                                "title": "24-Hour Forecast",
+                                "hours": 24,
                             },
+                            # Milestones
+                            {
+                                "type": "custom:solar-mind-milestones-card",
+                                "entity": "sensor.solar_mind_next_milestone",
+                                "title": "Upcoming Milestones",
+                                "max_milestones": 8,
+                            },
+                            # Current Plan Details
                             {
                                 "type": "entities",
                                 "title": "Current Hour Plan",
                                 "entities": [
                                     "sensor.solar_mind_current_hour_plan",
                                     "sensor.solar_mind_status",
-                                    "sensor.solar_mind_battery_soc",
                                     "sensor.solar_mind_predicted_soc_6h",
                                 ],
                                 "show_header_toggle": False,
                             },
-                            {
-                                "type": "horizontal-stack",
-                                "cards": [
-                                    {
-                                        "type": "entity",
-                                        "entity": "sensor.solar_mind_pv_forecast_today",
-                                        "name": "PV Today",
-                                        "icon": "mdi:solar-power-variant",
-                                    },
-                                    {
-                                        "type": "entity",
-                                        "entity": "sensor.solar_mind_pv_forecast_tomorrow",
-                                        "name": "PV Tomorrow",
-                                        "icon": "mdi:solar-power-variant-outline",
-                                    },
-                                    {
-                                        "type": "entity",
-                                        "entity": "sensor.solar_mind_load_forecast_today",
-                                        "name": "Load Today",
-                                        "icon": "mdi:home-lightning-bolt",
-                                    },
-                                ],
-                            },
+                            # Planned Actions
                             {
                                 "type": "entities",
                                 "title": "Planned Actions",
@@ -625,6 +658,7 @@ def create_lovelace() -> None:
                                 ],
                                 "show_header_toggle": False,
                             },
+                            # Cost Estimates
                             {
                                 "type": "horizontal-stack",
                                 "cards": [
@@ -648,28 +682,218 @@ def create_lovelace() -> None:
                                     },
                                 ],
                             },
+                            # Price Forecast
+                            {
+                                "type": "entities",
+                                "title": "Price Forecast",
+                                "entities": [
+                                    "sensor.solar_mind_price_forecast",
+                                    "sensor.solar_mind_cheapest_hours_today",
+                                ],
+                                "show_header_toggle": False,
+                            },
                         ],
                     },
+                    # ============ TAB 2b: GRAPHS (full visibility) ============
                     {
-                        "title": "Forecast History",
-                        "path": "forecast-history",
+                        "title": "Graphs",
+                        "path": "graphs",
+                        "icon": "mdi:chart-areaspline",
+                        "cards": [
+                            {
+                                "type": "markdown",
+                                "content": (
+                                    "### Expected (forecast)\n\n"
+                                    "Below: expected PV generation, house load, and battery level over the next 24 hours."
+                                ),
+                            },
+                            {
+                                "type": "custom:solar-mind-forecast-card",
+                                "entity": "sensor.solar_mind_hourly_plan",
+                                "title": "Expected generation, load & battery (24h)",
+                                "hours": 24,
+                                "show_generation": True,
+                                "show_load": True,
+                            },
+                            {
+                                "type": "markdown",
+                                "content": (
+                                    "### Actual (historical)\n\n"
+                                    "Recorded battery level, PV generation, house load, and grid power."
+                                ),
+                            },
+                            {
+                                "type": "history-graph",
+                                "title": "Battery level",
+                                "entities": [SOLAX_BATTERY_SOC],
+                                "hours_to_show": 48,
+                            },
+                            {
+                                "type": "history-graph",
+                                "title": "PV generation & house load",
+                                "entities": [SOLAX_PV_POWER, SOLAX_HOUSE_LOAD],
+                                "hours_to_show": 48,
+                            },
+                            {
+                                "type": "history-graph",
+                                "title": "Grid power (import/export)",
+                                "entities": [SOLAX_GRID_POWER],
+                                "hours_to_show": 48,
+                            },
+                            {
+                                "type": "history-graph",
+                                "title": "Battery level (7 days)",
+                                "entities": [SOLAX_BATTERY_SOC],
+                                "hours_to_show": 168,
+                            },
+                            {
+                                "type": "history-graph",
+                                "title": "PV & load (7 days)",
+                                "entities": [SOLAX_PV_POWER, SOLAX_HOUSE_LOAD],
+                                "hours_to_show": 168,
+                            },
+                        ],
+                    },
+                    # ============ TAB 3: EVENTS ============
+                    {
+                        "title": "Events",
+                        "path": "events",
+                        "icon": "mdi:timeline-clock",
+                        "cards": [
+                            # Away Period Form (add from dashboard)
+                            {
+                                "type": "custom:solar-mind-away-period-card",
+                                "title": "Add Away Period",
+                                "default_reduce_percent": 50,
+                            },
+                            # Away Periods count
+                            {
+                                "type": "entities",
+                                "title": "Away Periods",
+                                "entities": [
+                                    "sensor.solar_mind_away_periods",
+                                ],
+                                "show_header_toggle": False,
+                            },
+                            # Events Timeline
+                            {
+                                "type": "custom:solar-mind-events-card",
+                                "entity": "sensor.solar_mind_recent_events",
+                                "title": "System Events Timeline",
+                                "max_events": 20,
+                            },
+                            # Latest Event
+                            {
+                                "type": "entities",
+                                "title": "Latest Event Details",
+                                "entities": [
+                                    "sensor.solar_mind_latest_event",
+                                    "sensor.solar_mind_recent_events",
+                                ],
+                                "show_header_toggle": False,
+                            },
+                            {
+                                "type": "markdown",
+                                "content": (
+                                    "### Managing Away Periods\n\n"
+                                    "Use the form above to add periods when you'll be away. "
+                                    "You can also call `solar_mind.add_away_period` from Developer Tools or automations.\n\n"
+                                    "**Note:** If you see \"Entity not found\", your entity IDs may have a `_2` suffix. "
+                                    "Check Developer Tools → States and search for `solar_mind` to find the correct IDs."
+                                ),
+                            },
+                        ],
+                    },
+                    # ============ TAB 4: HISTORY ============
+                    {
+                        "title": "History",
+                        "path": "history",
                         "icon": "mdi:chart-line",
                         "cards": [
                             {
                                 "type": "markdown",
                                 "content": (
-                                    "## Forecast Accuracy\n\n"
-                                    "Compare predictions vs actual values to track forecast accuracy over time."
+                                    "### Historical graphs\n\n"
+                                    "Actual recorded values for battery, PV, load, and grid over time."
                                 ),
                             },
                             {
+                                "type": "history-graph",
+                                "title": "Battery level (24h)",
+                                "entities": [SOLAX_BATTERY_SOC],
+                                "hours_to_show": 24,
+                            },
+                            {
+                                "type": "history-graph",
+                                "title": "PV generation (24h)",
+                                "entities": [SOLAX_PV_POWER],
+                                "hours_to_show": 24,
+                            },
+                            {
+                                "type": "history-graph",
+                                "title": "House load (24h)",
+                                "entities": [SOLAX_HOUSE_LOAD],
+                                "hours_to_show": 24,
+                            },
+                            {
+                                "type": "history-graph",
+                                "title": "Grid power (24h)",
+                                "entities": [SOLAX_GRID_POWER],
+                                "hours_to_show": 24,
+                            },
+                            {
+                                "type": "history-graph",
+                                "title": "Battery, PV & load (7 days)",
+                                "entities": [SOLAX_BATTERY_SOC, SOLAX_PV_POWER, SOLAX_HOUSE_LOAD],
+                                "hours_to_show": 168,
+                            },
+                            # Forecast Accuracy
+                            {
+                                "type": "gauge",
+                                "entity": "sensor.solar_mind_forecast_accuracy",
+                                "name": "Forecast Accuracy",
+                                "min": 0,
+                                "max": 100,
+                                "severity": {
+                                    "green": 80,
+                                    "yellow": 60,
+                                    "red": 0,
+                                },
+                            },
+                            {
                                 "type": "entities",
-                                "title": "Forecast Accuracy",
+                                "title": "Forecast Accuracy Details",
                                 "entities": [
                                     "sensor.solar_mind_forecast_accuracy",
-                                    "sensor.solar_mind_historical_comparison",
+                                    "sensor.solar_mind_historical_accuracy",
                                 ],
                                 "show_header_toggle": False,
+                            },
+                            {
+                                "type": "markdown",
+                                "content": (
+                                    "### Prediction vs Actual\n\n"
+                                    "The historical comparison sensor tracks:\n"
+                                    "- PV forecast accuracy (predicted vs actual generation)\n"
+                                    "- Load forecast accuracy (predicted vs actual consumption)\n"
+                                    "- SOC prediction accuracy\n\n"
+                                    "Check the sensor attributes for detailed hourly comparisons."
+                                ),
+                            },
+                            {
+                                "type": "horizontal-stack",
+                                "cards": [
+                                    {
+                                        "type": "entity",
+                                        "entity": "sensor.solar_mind_pv_forecast_today",
+                                        "name": "PV Today",
+                                    },
+                                    {
+                                        "type": "entity",
+                                        "entity": "sensor.solar_mind_pv_forecast_tomorrow",
+                                        "name": "PV Tomorrow",
+                                    },
+                                ],
                             },
                             {
                                 "type": "entities",
@@ -677,17 +901,114 @@ def create_lovelace() -> None:
                                 "entities": [
                                     "sensor.solar_mind_plan_horizon",
                                     "sensor.solar_mind_last_update",
+                                    "sensor.solar_mind_active_strategy",
+                                ],
+                                "show_header_toggle": False,
+                            },
+                        ],
+                    },
+                    # ============ TAB 5: HEALTH ============
+                    {
+                        "title": "Health",
+                        "path": "health",
+                        "icon": "mdi:heart-pulse",
+                        "cards": [
+                            # System Health
+                            {
+                                "type": "custom:solar-mind-health-card",
+                                "entity": "sensor.solar_mind_system_health",
+                                "title": "System Health",
+                            },
+                            # Warnings
+                            {
+                                "type": "entities",
+                                "title": "System Status",
+                                "entities": [
+                                    "sensor.solar_mind_active_warnings",
+                                    "sensor.solar_mind_system_health",
+                                    "sensor.solar_mind_charge_cycles_today",
+                                ],
+                                "show_header_toggle": False,
+                            },
+                            # Temperature (if available)
+                            {
+                                "type": "entities",
+                                "title": "Temperature Monitoring",
+                                "entities": [
+                                    "sensor.solar_mind_battery_temperature",
+                                    "sensor.solar_mind_inverter_temperature",
+                                ],
+                                "show_header_toggle": False,
+                            },
+                            # Inverter Controls
+                            {
+                                "type": "entities",
+                                "title": "Inverter Controls",
+                                "entities": [
+                                    SOLAX_REMOTECONTROL_POWER_CONTROL,
+                                    SOLAX_REMOTECONTROL_ACTIVE_POWER,
+                                    SOLAX_ENERGY_STORAGE_MODE,
+                                    SOLAX_REMOTECONTROL_TRIGGER,
+                                ],
+                                "show_header_toggle": False,
+                            },
+                            # Manual Controls
+                            {
+                                "type": "markdown",
+                                "content": (
+                                    "### Manual Controls\n\n"
+                                    "Use these services for manual control:\n\n"
+                                    "- `solar_mind.charge_battery_from_grid` - Force charge from grid\n"
+                                    "- `solar_mind.discharge_battery_to_grid` - Discharge to grid\n"
+                                    "- `solar_mind.set_self_use` - Enable self-use mode\n"
+                                    "- `solar_mind.set_house_use_grid` - House from grid (preserve battery)\n"
+                                    "- `solar_mind.apply_strategy` - Re-apply current strategy\n"
+                                ),
+                            },
+                        ],
+                    },
+                    # ============ TAB 6: SETTINGS ============
+                    {
+                        "title": "Settings",
+                        "path": "settings",
+                        "icon": "mdi:cog",
+                        "cards": [
+                            {
+                                "type": "markdown",
+                                "content": (
+                                    "## Solar Mind Settings\n\n"
+                                    "Configure Solar Mind through the integration options:\n\n"
+                                    "**Settings → Devices & Services → Solar Mind → Configure**\n\n"
+                                    "### Available Options:\n"
+                                    "- **Charge Price Threshold** - Price below which to charge from grid\n"
+                                    "- **Discharge Price Threshold** - Price above which to sell to grid\n"
+                                    "- **Min/Max SOC** - Battery charge limits\n"
+                                    "- **Charge Window** - Hours when grid charging is allowed\n"
+                                    "- **Max Charge/Discharge Power** - Power limits in watts\n"
+                                ),
+                            },
+                            {
+                                "type": "entities",
+                                "title": "Current Configuration",
+                                "entities": [
+                                    "sensor.solar_mind_active_strategy",
+                                    "sensor.solar_mind_status",
                                 ],
                                 "show_header_toggle": False,
                             },
                             {
                                 "type": "markdown",
                                 "content": (
-                                    "### How to View Historical Data\n\n"
-                                    "1. Click on any sensor above to see its history graph\n"
-                                    "2. Use the History panel (sidebar) for detailed comparisons\n"
-                                    "3. Sensor attributes contain detailed hourly forecast vs actual data\n\n"
-                                    "**Tip:** Enable the Recorder component with history to store more data."
+                                    "### High-Demand Appliances\n\n"
+                                    "Register appliances for optimal scheduling:\n\n"
+                                    "```yaml\n"
+                                    "service: solar_mind.set_high_demand_appliance\n"
+                                    "data:\n"
+                                    "  name: 'Water heater'\n"
+                                    "  power_w: 2000\n"
+                                    "```\n\n"
+                                    "The system will recommend the best times to run these appliances "
+                                    "based on solar surplus and electricity prices."
                                 ),
                             },
                         ],
@@ -710,6 +1031,25 @@ def create_lovelace_dashboards() -> None:
     write_json(STORAGE_DIR / "lovelace_dashboards", data)
 
 
+def copy_custom_cards() -> None:
+    """Copy Solar Mind custom Lovelace cards to www folder."""
+    source_dir = CUSTOM_COMPONENTS / "solar_mind" / "www"
+    target_dir = SCRIPT_DIR / "config" / "www" / "solar-mind"
+    
+    if not source_dir.exists():
+        print(f"  Warning: Custom cards source not found: {source_dir}")
+        return
+    
+    target_dir.mkdir(parents=True, exist_ok=True)
+    
+    for card_file in source_dir.glob("*.js"):
+        target_file = target_dir / card_file.name
+        shutil.copy2(card_file, target_file)
+        print(f"  Copied: {card_file.name} → www/solar-mind/")
+    
+    print(f"  Custom cards installed to: {target_dir.relative_to(SCRIPT_DIR)}")
+
+
 def main() -> None:
     """Seed the .storage directory."""
     print(f"\nSeeding Home Assistant storage in: {STORAGE_DIR}")
@@ -717,6 +1057,9 @@ def main() -> None:
 
     # Ensure Czech Energy Spot Prices is in custom_components (clone if missing)
     ensure_cz_energy_spot_prices()
+
+    # Copy custom Lovelace cards
+    copy_custom_cards()
 
     # Generate IDs
     user_id = generate_uuid()
@@ -763,6 +1106,7 @@ def main() -> None:
         "  4. Integrations Solax Simulator, Czech Energy Spot Prices, Open-Meteo, Solar Mind, and Model Context Protocol Server are pre-configured."
     )
     print(f"  5. MCP token for Cursor: dev/config/.ha_mcp_token (use in Cursor MCP env as API_ACCESS_TOKEN)")
+    print(f"  6. Custom Lovelace cards are installed in www/solar-mind/")
 
 
 if __name__ == "__main__":

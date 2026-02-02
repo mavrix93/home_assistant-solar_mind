@@ -403,13 +403,13 @@ def _get_current_hour_plan_attrs(data: SolarMindData) -> dict[str, Any]:
     }
 
 
-def _get_forecast_accuracy_pv(data: SolarMindData) -> float | str:
+def _get_forecast_accuracy_pv(data: SolarMindData) -> float | None:
     """Get PV forecast accuracy percentage."""
     if not data.plan_history:
-        return "No data"
+        return None
     accuracy = data.plan_history.pv_forecast_accuracy
     if accuracy is None:
-        return "No data"
+        return None
     return round(accuracy, 1)
 
 
@@ -484,6 +484,308 @@ def _get_historical_attrs(data: SolarMindData) -> dict[str, Any]:
     return {
         "recent_comparisons": comparisons,
         "total_samples": len(data.plan_history.comparisons),
+    }
+
+
+# ============ NEW EVENT/MILESTONE/HEALTH SENSORS ============
+
+
+def _get_recent_events(data: SolarMindData) -> int:
+    """Get count of recent events."""
+    if not data.event_log:
+        return 0
+    return len(data.event_log.get_recent(50))
+
+
+def _get_events_attrs(data: SolarMindData) -> dict[str, Any]:
+    """Get recent events as attributes."""
+    if not data.event_log:
+        return {}
+    recent = data.event_log.get_recent(50)
+    return {
+        "events": [e.to_dict() for e in recent],
+        "total_count": len(data.event_log.events),
+    }
+
+
+def _get_latest_event(data: SolarMindData) -> str | None:
+    """Get the most recent event title."""
+    if not data.event_log or not data.event_log.events:
+        return "No events"
+    latest = data.event_log.events[-1]
+    return latest.title
+
+
+def _get_latest_event_attrs(data: SolarMindData) -> dict[str, Any]:
+    """Get the most recent event details."""
+    if not data.event_log or not data.event_log.events:
+        return {}
+    latest = data.event_log.events[-1]
+    return latest.to_dict()
+
+
+def _get_system_health_score(data: SolarMindData) -> float | None:
+    """Get the overall system health score."""
+    if not data.system_health:
+        return None
+    return round(data.system_health.health_score, 1)
+
+
+def _get_system_health_attrs(data: SolarMindData) -> dict[str, Any]:
+    """Get system health details."""
+    if not data.system_health:
+        return {}
+    return data.system_health.to_dict()
+
+
+def _get_battery_temperature(data: SolarMindData) -> float | None:
+    """Get battery temperature."""
+    if not data.system_health:
+        return None
+    return data.system_health.battery_temperature
+
+
+def _get_inverter_temperature(data: SolarMindData) -> float | None:
+    """Get inverter temperature."""
+    if not data.system_health:
+        return None
+    return data.system_health.inverter_temperature
+
+
+def _get_charge_cycles_today(data: SolarMindData) -> int:
+    """Get number of charge cycles today."""
+    if not data.system_health:
+        return 0
+    return data.system_health.charge_cycles_today
+
+
+def _get_cycles_attrs(data: SolarMindData) -> dict[str, Any]:
+    """Get cycle count details."""
+    if not data.system_health:
+        return {}
+    return {
+        "charge_cycles": data.system_health.charge_cycles_today,
+        "discharge_cycles": data.system_health.discharge_cycles_today,
+        "mode_changes": data.system_health.mode_changes_today,
+    }
+
+
+def _get_active_warnings(data: SolarMindData) -> int:
+    """Get number of active warnings."""
+    if not data.system_health:
+        return 0
+    return len(data.system_health.active_warnings)
+
+
+def _get_warnings_attrs(data: SolarMindData) -> dict[str, Any]:
+    """Get active warnings details."""
+    if not data.system_health:
+        return {}
+    return {
+        "warnings": data.system_health.active_warnings,
+        "recent_errors": data.system_health.recent_errors[-5:],
+    }
+
+
+def _get_next_milestone(data: SolarMindData) -> str | None:
+    """Get the next upcoming milestone."""
+    if not data.milestones:
+        return "No milestones"
+    return data.milestones[0].title
+
+
+def _get_milestone_attrs(data: SolarMindData) -> dict[str, Any]:
+    """Get milestone details."""
+    if not data.milestones:
+        return {}
+    return {
+        "milestones": [m.to_dict() for m in data.milestones],
+        "next_milestone_time": data.milestones[0].timestamp.isoformat() if data.milestones else None,
+    }
+
+
+def _get_best_water_heater_time(data: SolarMindData) -> str | None:
+    """Get the best time to run water heater."""
+    if not data.milestones:
+        return None
+    for m in data.milestones:
+        if m.milestone_type == "best_appliance_time" and "water" in m.data.get("appliance", "").lower():
+            return m.timestamp.strftime("%H:%M")
+    # If no specific milestone, find best surplus hour
+    if data.energy_plan and data.energy_plan.entries:
+        now = datetime.now(timezone.utc)
+        best_entry = None
+        best_surplus = 0
+        for entry in data.energy_plan.entries:
+            if entry.hour > now:
+                surplus = entry.pv_forecast_wh - entry.load_forecast_wh
+                if surplus > best_surplus:
+                    best_surplus = surplus
+                    best_entry = entry
+        if best_entry and best_surplus > 1000:  # At least 1kWh surplus
+            return best_entry.hour.strftime("%H:%M")
+    return None
+
+
+def _get_appliance_time_attrs(data: SolarMindData) -> dict[str, Any]:
+    """Get appliance timing details."""
+    if not data.milestones:
+        return {}
+    appliance_times = {}
+    for m in data.milestones:
+        if m.milestone_type == "best_appliance_time":
+            appliance_name = m.data.get("appliance", "Unknown")
+            appliance_times[appliance_name] = {
+                "time": m.timestamp.strftime("%H:%M"),
+                "date": m.timestamp.strftime("%Y-%m-%d"),
+                "power_w": m.data.get("power_w"),
+            }
+    return {"appliance_recommendations": appliance_times}
+
+
+def _get_surplus_start_time(data: SolarMindData) -> str | None:
+    """Get when energy surplus is expected to start."""
+    if not data.milestones:
+        return None
+    for m in data.milestones:
+        if m.milestone_type == "surplus_start":
+            return m.timestamp.strftime("%H:%M")
+    return None
+
+
+def _get_surplus_attrs(data: SolarMindData) -> dict[str, Any]:
+    """Get surplus timing details."""
+    if not data.energy_plan or not data.energy_plan.entries:
+        return {}
+    now = datetime.now(timezone.utc)
+    surplus_hours = []
+    for entry in data.energy_plan.entries:
+        if entry.hour > now and entry.pv_forecast_wh > entry.load_forecast_wh:
+            surplus_hours.append({
+                "hour": entry.hour.strftime("%H:%M"),
+                "surplus_wh": round(entry.pv_forecast_wh - entry.load_forecast_wh, 1),
+                "pv_wh": round(entry.pv_forecast_wh, 1),
+                "load_wh": round(entry.load_forecast_wh, 1),
+            })
+    return {
+        "surplus_hours": surplus_hours[:12],
+        "total_surplus_hours": len(surplus_hours),
+        "total_surplus_wh": sum(h["surplus_wh"] for h in surplus_hours),
+    }
+
+
+def _get_away_periods_count(data: SolarMindData) -> int:
+    """Get number of configured away periods."""
+    if not data.user_preferences:
+        return 0
+    return len(data.user_preferences.away_periods)
+
+
+def _get_away_periods_attrs(data: SolarMindData) -> dict[str, Any]:
+    """Get away periods details."""
+    if not data.user_preferences:
+        return {}
+    now = datetime.now(timezone.utc)
+    active = data.user_preferences.get_active_away_period(now)
+    return {
+        "away_periods": [p.to_dict() for p in data.user_preferences.away_periods],
+        "is_away": active is not None,
+        "active_period": active.to_dict() if active else None,
+    }
+
+
+def _get_energy_flow_state(data: SolarMindData) -> str:
+    """Get current energy flow state description."""
+    if not data.strategy_output:
+        return "unknown"
+    
+    status = data.strategy_output.status.value
+    power = data.strategy_output.power_w or 0
+    
+    if status == "charging":
+        return f"Grid → Battery ({abs(power)}W)"
+    elif status == "discharging":
+        return f"Battery → Grid ({abs(power)}W)"
+    elif status == "self_use":
+        return "Solar → Home/Battery"
+    elif status == "house_from_grid":
+        return "Grid → Home"
+    return status
+
+
+def _get_energy_flow_attrs(data: SolarMindData) -> dict[str, Any]:
+    """Get detailed energy flow information."""
+    attrs: dict[str, Any] = {}
+    
+    if data.solax_state:
+        attrs["battery_soc"] = data.solax_state.battery_soc
+        attrs["current_mode"] = data.solax_state.current_mode
+        attrs["active_power"] = data.solax_state.active_power
+        attrs["grid_import"] = data.solax_state.grid_import
+        attrs["grid_export"] = data.solax_state.grid_export
+        attrs["house_load"] = data.solax_state.house_load
+    
+    if data.strategy_output:
+        attrs["status"] = data.strategy_output.status.value
+        attrs["reason"] = data.strategy_output.reason
+    
+    if data.prices:
+        attrs["current_price"] = data.prices.current_price
+    
+    return attrs
+
+
+def _get_hourly_plan_json(data: SolarMindData) -> str | None:
+    """Get the full hourly plan as JSON string for dashboard visualization."""
+    if not data.energy_plan or not data.energy_plan.entries:
+        return None
+    return str(len(data.energy_plan.entries)) + " hours"
+
+
+def _get_hourly_plan_attrs(data: SolarMindData) -> dict[str, Any]:
+    """Get hourly plan for visualization. Limited to next 24h to stay under Recorder 16KB limit."""
+    if not data.energy_plan or not data.energy_plan.entries:
+        return {}
+    now = datetime.now(timezone.utc)
+    # Only include future + next 24h to keep attributes under 16KB
+    entries_24h = [e for e in data.energy_plan.entries if e.hour >= now][:24]
+    plan_dicts = [e.to_dict() for e in entries_24h]
+    return {
+        "plan": plan_dicts,
+        "summary": {
+            "total_pv_kwh": round(data.energy_plan.total_pv_forecast_wh / 1000, 2),
+            "total_load_kwh": round(data.energy_plan.total_load_forecast_wh / 1000, 2),
+            "total_import_kwh": round(data.energy_plan.total_grid_import_wh / 1000, 2),
+            "total_export_kwh": round(data.energy_plan.total_grid_export_wh / 1000, 2),
+            "estimated_cost": round(data.energy_plan.estimated_cost, 2),
+            "estimated_revenue": round(data.energy_plan.estimated_revenue, 2),
+        },
+    }
+
+
+def _get_price_forecast_json(data: SolarMindData) -> str | None:
+    """Get price forecast summary (clear label: hours of data)."""
+    if not data.prices.today:
+        return "No data"
+    today_h = len(data.prices.today)
+    tomorrow_h = len(data.prices.tomorrow)
+    if tomorrow_h:
+        return f"{today_h}h today, {tomorrow_h}h tomorrow"
+    return f"{today_h}h today"
+
+
+def _get_price_forecast_attrs(data: SolarMindData) -> dict[str, Any]:
+    """Get price forecast details for visualization."""
+    today_prices = [{"hour": p.start.hour, "price": p.price} for p in data.prices.today]
+    tomorrow_prices = [{"hour": p.start.hour, "price": p.price} for p in data.prices.tomorrow]
+    
+    return {
+        "today": today_prices,
+        "tomorrow": tomorrow_prices,
+        "current_price": data.prices.current_price,
+        "tomorrow_available": data.prices.tomorrow_available,
+        "cheapest_today": min(today_prices, key=lambda x: x["price"]) if today_prices else None,
+        "most_expensive_today": max(today_prices, key=lambda x: x["price"]) if today_prices else None,
     }
 
 
@@ -568,6 +870,7 @@ SENSOR_DESCRIPTIONS: tuple[SolarMindSensorEntityDescription, ...] = (
         key="next_cheap_hour",
         name="Next Cheap Hour",
         icon="mdi:clock-outline",
+        state_class=None,  # Future data: avoid history-stats in UI
         value_fn=_get_next_cheap_hour,
         attr_fn=_get_next_cheap_hour_attrs,
     ),
@@ -575,6 +878,7 @@ SENSOR_DESCRIPTIONS: tuple[SolarMindSensorEntityDescription, ...] = (
         key="cheapest_hours_today",
         name="Cheapest Hours Today",
         icon="mdi:clock-check-outline",
+        state_class=None,  # Future data: use custom card, not history
         value_fn=_get_cheapest_hours_today,
         attr_fn=_get_cheapest_hours_attrs,
     ),
@@ -589,6 +893,7 @@ SENSOR_DESCRIPTIONS: tuple[SolarMindSensorEntityDescription, ...] = (
         key="next_action",
         name="Next Action",
         icon="mdi:arrow-right-bold-circle-outline",
+        state_class=None,  # Future data
         value_fn=_get_next_action,
     ),
     SolarMindSensorEntityDescription(
@@ -613,7 +918,7 @@ SENSOR_DESCRIPTIONS: tuple[SolarMindSensorEntityDescription, ...] = (
         name="PV Forecast Today",
         icon="mdi:solar-power-variant",
         device_class=SensorDeviceClass.ENERGY,
-        state_class=SensorStateClass.TOTAL,
+        state_class=None,  # Forecast: avoid history-stats in UI
         native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
         value_fn=_get_pv_forecast_today,
         attr_fn=_get_pv_forecast_today_attrs,
@@ -623,7 +928,7 @@ SENSOR_DESCRIPTIONS: tuple[SolarMindSensorEntityDescription, ...] = (
         name="PV Forecast Tomorrow",
         icon="mdi:solar-power-variant-outline",
         device_class=SensorDeviceClass.ENERGY,
-        state_class=SensorStateClass.TOTAL,
+        state_class=None,  # Forecast
         native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
         value_fn=_get_pv_forecast_tomorrow,
         attr_fn=_get_pv_forecast_tomorrow_attrs,
@@ -633,7 +938,7 @@ SENSOR_DESCRIPTIONS: tuple[SolarMindSensorEntityDescription, ...] = (
         name="Load Forecast Today",
         icon="mdi:home-lightning-bolt",
         device_class=SensorDeviceClass.ENERGY,
-        state_class=SensorStateClass.TOTAL,
+        state_class=None,  # Forecast
         native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
         value_fn=_get_load_forecast_today,
         attr_fn=_get_load_forecast_today_attrs,
@@ -642,6 +947,7 @@ SENSOR_DESCRIPTIONS: tuple[SolarMindSensorEntityDescription, ...] = (
         key="next_planned_charge",
         name="Next Planned Charge",
         icon="mdi:battery-charging-high",
+        state_class=None,  # Future data
         value_fn=_get_next_planned_charge,
         attr_fn=_get_next_planned_charge_attrs,
     ),
@@ -649,6 +955,7 @@ SENSOR_DESCRIPTIONS: tuple[SolarMindSensorEntityDescription, ...] = (
         key="next_planned_discharge",
         name="Next Planned Discharge",
         icon="mdi:battery-arrow-down",
+        state_class=None,  # Future data
         value_fn=_get_next_planned_discharge,
         attr_fn=_get_next_planned_discharge_attrs,
     ),
@@ -657,7 +964,7 @@ SENSOR_DESCRIPTIONS: tuple[SolarMindSensorEntityDescription, ...] = (
         name="Predicted SOC (6h)",
         icon="mdi:battery-clock",
         device_class=SensorDeviceClass.BATTERY,
-        state_class=SensorStateClass.MEASUREMENT,
+        state_class=None,  # Forecast: avoid history-stats
         native_unit_of_measurement="%",
         value_fn=_get_predicted_soc_6h,
         attr_fn=_get_predicted_soc_attrs,
@@ -699,7 +1006,7 @@ SENSOR_DESCRIPTIONS: tuple[SolarMindSensorEntityDescription, ...] = (
         key="plan_horizon",
         name="Plan Horizon",
         icon="mdi:calendar-clock",
-        state_class=SensorStateClass.MEASUREMENT,
+        state_class=None,  # Plan metadata: avoid history-stats
         native_unit_of_measurement="hours",
         value_fn=_get_plan_horizon,
         attr_fn=_get_plan_horizon_attrs,
@@ -710,6 +1017,122 @@ SENSOR_DESCRIPTIONS: tuple[SolarMindSensorEntityDescription, ...] = (
         icon="mdi:history",
         value_fn=_get_historical_comparison,
         attr_fn=_get_historical_attrs,
+    ),
+    # ============ NEW EVENT/MILESTONE/HEALTH SENSORS ============
+    SolarMindSensorEntityDescription(
+        key="recent_events_count",
+        name="Recent Events",
+        icon="mdi:timeline-clock-outline",
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=_get_recent_events,
+        attr_fn=_get_events_attrs,
+    ),
+    SolarMindSensorEntityDescription(
+        key="latest_event",
+        name="Latest Event",
+        icon="mdi:bell-outline",
+        value_fn=_get_latest_event,
+        attr_fn=_get_latest_event_attrs,
+    ),
+    SolarMindSensorEntityDescription(
+        key="system_health_score",
+        name="System Health",
+        icon="mdi:heart-pulse",
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement="%",
+        value_fn=_get_system_health_score,
+        attr_fn=_get_system_health_attrs,
+    ),
+    SolarMindSensorEntityDescription(
+        key="battery_temperature",
+        name="Battery Temperature",
+        icon="mdi:thermometer",
+        device_class=SensorDeviceClass.TEMPERATURE,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement="°C",
+        entity_registry_enabled_default=False,
+        value_fn=_get_battery_temperature,
+    ),
+    SolarMindSensorEntityDescription(
+        key="inverter_temperature",
+        name="Inverter Temperature",
+        icon="mdi:thermometer",
+        device_class=SensorDeviceClass.TEMPERATURE,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement="°C",
+        entity_registry_enabled_default=False,
+        value_fn=_get_inverter_temperature,
+    ),
+    SolarMindSensorEntityDescription(
+        key="charge_cycles_today",
+        name="Charge Cycles Today",
+        icon="mdi:battery-charging-high",
+        state_class=SensorStateClass.TOTAL_INCREASING,
+        value_fn=_get_charge_cycles_today,
+        attr_fn=_get_cycles_attrs,
+    ),
+    SolarMindSensorEntityDescription(
+        key="active_warnings",
+        name="Active Warnings",
+        icon="mdi:alert-outline",
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=_get_active_warnings,
+        attr_fn=_get_warnings_attrs,
+    ),
+    SolarMindSensorEntityDescription(
+        key="next_milestone",
+        name="Next Milestone",
+        icon="mdi:flag-checkered",
+        state_class=None,  # Future data
+        value_fn=_get_next_milestone,
+        attr_fn=_get_milestone_attrs,
+    ),
+    SolarMindSensorEntityDescription(
+        key="best_water_heater_time",
+        name="Best Time for Water Heater",
+        icon="mdi:water-boiler",
+        state_class=None,  # Future time
+        value_fn=_get_best_water_heater_time,
+        attr_fn=_get_appliance_time_attrs,
+    ),
+    SolarMindSensorEntityDescription(
+        key="surplus_start_time",
+        name="Surplus Start Time",
+        icon="mdi:weather-sunny-alert",
+        state_class=None,  # Future time
+        value_fn=_get_surplus_start_time,
+        attr_fn=_get_surplus_attrs,
+    ),
+    SolarMindSensorEntityDescription(
+        key="away_periods",
+        name="Away Periods",
+        icon="mdi:home-export-outline",
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=_get_away_periods_count,
+        attr_fn=_get_away_periods_attrs,
+    ),
+    SolarMindSensorEntityDescription(
+        key="energy_flow",
+        name="Energy Flow",
+        icon="mdi:transmission-tower",
+        value_fn=_get_energy_flow_state,
+        attr_fn=_get_energy_flow_attrs,
+    ),
+    SolarMindSensorEntityDescription(
+        key="hourly_plan",
+        name="Hourly Plan",
+        icon="mdi:calendar-text",
+        state_class=None,  # Future plan: use forecast card
+        value_fn=_get_hourly_plan_json,
+        attr_fn=_get_hourly_plan_attrs,
+    ),
+    SolarMindSensorEntityDescription(
+        key="price_forecast",
+        name="Price Forecast",
+        icon="mdi:chart-line-variant",
+        state_class=None,  # Future data: use price/cheapest card
+        value_fn=_get_price_forecast_json,
+        attr_fn=_get_price_forecast_attrs,
     ),
 )
 
