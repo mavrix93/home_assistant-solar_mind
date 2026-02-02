@@ -1,5 +1,4 @@
 """Constants for the Solar Mind integration."""
-from __future__ import annotations
 
 from enum import Enum
 from typing import Final
@@ -48,6 +47,12 @@ CONF_DISCHARGE_ALLOWED: Final = "discharge_allowed"
 CONF_UPDATE_INTERVAL: Final = "update_interval"
 CONF_AUTOREPEAT_DURATION: Final = "autorepeat_duration"
 
+# Energy planner config keys
+CONF_BATTERY_CAPACITY: Final = "battery_capacity"
+CONF_MAX_PV_POWER: Final = "max_pv_power"
+CONF_AVERAGE_HOUSE_LOAD: Final = "average_house_load"
+CONF_BATTERY_EFFICIENCY: Final = "battery_efficiency"
+
 # Default values
 DEFAULT_CHARGE_PRICE_THRESHOLD: Final = 0.05  # EUR/kWh or CZK/kWh
 DEFAULT_DISCHARGE_PRICE_THRESHOLD: Final = 0.15  # EUR/kWh or CZK/kWh
@@ -60,6 +65,12 @@ DEFAULT_CHARGE_WINDOW_END: Final = 6  # Hour (06:00)
 DEFAULT_DISCHARGE_ALLOWED: Final = False
 DEFAULT_UPDATE_INTERVAL: Final = 5  # minutes
 DEFAULT_AUTOREPEAT_DURATION: Final = 3600  # seconds (1 hour)
+
+# Energy planner defaults
+DEFAULT_BATTERY_CAPACITY: Final = 14400  # Wh 
+DEFAULT_MAX_PV_POWER: Final = 10000  # W (10 kW peak)
+DEFAULT_AVERAGE_HOUSE_LOAD: Final = 500  # W average
+DEFAULT_BATTERY_EFFICIENCY: Final = 0.90  # 90% round-trip efficiency
 
 
 class PriceSource(StrEnum):

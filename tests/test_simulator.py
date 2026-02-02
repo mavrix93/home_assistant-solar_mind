@@ -170,8 +170,9 @@ class TestSimulatorPVProduction:
         
         simulator._update_pv_production()
         
-        # At noon with sunny weather, PV should be near max (with some variation)
-        assert simulator.state.pv_power > simulator.state.max_pv_power * 0.85
+        # At noon (summer solstice default) with sunny weather, PV should be high
+        # (sun elevation ~88% at 51.5°N; variation ±4%)
+        assert simulator.state.pv_power > simulator.state.max_pv_power * 0.80
 
     def test_pv_production_at_night(self, simulator):
         """Test PV production is zero at night."""
@@ -188,8 +189,8 @@ class TestSimulatorPVProduction:
         
         simulator._update_pv_production()
         
-        # Cloudy should reduce to about 20% of max
-        assert simulator.state.pv_power < simulator.state.max_pv_power * 0.3
+        # Cloudy should reduce to a small fraction of max (realistic winter/cloudy)
+        assert simulator.state.pv_power < simulator.state.max_pv_power * 0.15
 
     def test_pv_production_at_sunrise(self, simulator):
         """Test PV production increases at sunrise."""
@@ -206,6 +207,33 @@ class TestSimulatorPVProduction:
         pv_noon = simulator.state.pv_power
         
         assert pv_morning < pv_noon
+
+    def test_pv_production_winter_lower_than_summer(self, simulator):
+        """Test PV production is lower in winter than summer (same hour, latitude)."""
+        simulator.set_weather(SimulatedWeather.SUNNY)
+        simulator.set_simulated_hour(12)
+
+        # Winter solstice noon
+        winter_noon = datetime(2024, 12, 21, 12, 0)
+        simulator._update_pv_production(winter_noon)
+        pv_winter = simulator.state.pv_power
+
+        # Summer solstice noon (default date in _update_pv_production when now passed)
+        summer_noon = datetime(2024, 6, 21, 12, 0)
+        simulator._update_pv_production(summer_noon)
+        pv_summer = simulator.state.pv_power
+
+        assert pv_winter > 0
+        assert pv_summer > pv_winter
+
+    def test_pv_production_cloudy_winter_very_low(self, simulator):
+        """Test cloudy winter noon gives very low PV (realistic)."""
+        simulator.set_weather(SimulatedWeather.CLOUDY)
+        simulator.set_simulated_hour(12)
+        winter_noon = datetime(2024, 12, 21, 12, 0)
+        simulator._update_pv_production(winter_noon)
+        # Winter noon ~26% sun elevation; cloudy 7% → ~1.8% of max before variation
+        assert simulator.state.pv_power < simulator.state.max_pv_power * 0.05
 
 
 class TestSimulatorPowerFlow:

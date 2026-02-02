@@ -330,6 +330,7 @@ For local development and testing, you can run a complete Home Assistant instanc
 
 - Default user (`dev` / `dev`)
 - Solax PV Simulator already installed
+- Model Context Protocol Server (MCP) for Cursor/LLM clients
 - Default dashboard with simulator entities
 
 ### Quick Start
@@ -358,6 +359,12 @@ The `dev/` directory contains:
 - `seed.sh` – Wrapper script to run the seed
 
 The repo's `custom_components/` is mounted read-only into the container, so code changes take effect after restarting HA.
+
+If the Overview dashboard shows **Configuration error** or some entities as unavailable (e.g. price sensor or Solar Mind sensors), common causes are:
+
+- **Price sensor**: Solar Mind resolves `sensor.current_spot_electricity_price` automatically; if your Czech OTE integration created `sensor.current_spot_electricity_price_2`, the coordinator will use it.
+- **Weather**: If `weather.get_forecasts` is not available in your HA version, the integration falls back to the weather entity's forecast attribute.
+- **Solar Mind entities with _2 suffix**: HA may register sensors as `sensor.solar_mind_status_2` etc. Edit the Overview dashboard (pencil icon → edit the card), and re-select the Solar Mind entities from the list so the card shows the correct ones.
 
 ### Common Commands
 
@@ -412,6 +419,30 @@ The compose file mounts `dev/config` as `/config` (paths are relative to the `de
 - The default password (`dev`) is for development only – don't expose this instance to the internet
 - On Apple Silicon Macs, the official HA image works natively (multi-arch)
 - If you see jemalloc errors on ARM, add `DISABLE_JEMALLOC: true` to environment in docker-compose.yml
+
+### Cursor + Home Assistant MCP
+
+The sandbox seeds the [Model Context Protocol Server](https://www.home-assistant.io/integrations/mcp_server/) integration so Cursor (or other MCP clients) can talk to the dev instance. Use it to validate changes by querying entities and calling services via MCP tools.
+
+**One-time setup:**
+
+1. **Install mcp-proxy** (Cursor uses stdio; HA exposes Streamable HTTP):
+   ```bash
+   uv tool install git+https://github.com/sparfenyuk/mcp-proxy
+   # or: pip install mcp-proxy  (if available)
+   ```
+
+2. **Get the MCP token** (created by seed, survives restarts until you re-seed):
+   - After running `./dev/seed.sh`, the token is in `dev/config/.ha_mcp_token` (gitignored).
+   - Use its contents as `API_ACCESS_TOKEN` in Cursor MCP. Example: `"env": { "API_ACCESS_TOKEN": "<paste token from .ha_mcp_token>" }`, or point your shell/env at the file.
+
+3. **Add the MCP server in Cursor:**
+   - Open Cursor **Settings** → **MCP** → **Add new global MCP server**
+   - Paste the contents of `dev/cursor-mcp.example.json`, then set `API_ACCESS_TOKEN` to the contents of `dev/config/.ha_mcp_token` (created by `./dev/seed.sh`)
+   - Alternatively merge the `mcpServers` entry into your existing `~/.cursor/mcp.json`
+   - Restart Cursor; the "Home Assistant" server should show green when the sandbox is running.
+
+With the MCP server connected, you can ask Cursor to list entities, get state, or call services on the sandbox to validate integration changes. The project includes a Cursor rule (`.cursor/rules/validate-via-ha-mcp.mdc`) that encourages using these tools when validating sandbox-related changes.
 
 ## Dependencies
 

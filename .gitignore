@@ -73,3 +73,7 @@ dev/config/scenes.yaml
 dev/config/tts/
 dev/config/deps/
 dev/config/.cloud/
+dev/config/.ha_mcp_token
+dev/config/home-assistant.log.1
+dev/config/home-assistant.log.1
+dev/config/.ha_run.lock

@@ -2,23 +2,24 @@
 
 Used by simulator.py (HA integration) and by tests.
 """
-from __future__ import annotations
 
 import logging
 import math
 import random
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import date, datetime, time, timedelta
 from typing import Any, Callable
 
 from .const import (
     CONF_BATTERY_CAPACITY,
     CONF_INITIAL_SOC,
+    CONF_LATITUDE,
     CONF_MAX_CHARGE_POWER,
     CONF_MAX_DISCHARGE_POWER,
     CONF_MAX_PV_POWER,
     DEFAULT_BATTERY_CAPACITY,
     DEFAULT_INITIAL_SOC,
+    DEFAULT_LATITUDE,
     DEFAULT_MAX_CHARGE_POWER,
     DEFAULT_MAX_DISCHARGE_POWER,
     DEFAULT_MAX_PV_POWER,
@@ -78,6 +79,7 @@ class SimulatorState:
     weather: SimulatedWeather = SimulatedWeather.SUNNY
     simulated_hour: float = 12.0  # Hour of day for PV simulation
     use_real_time: bool = True
+    latitude: float = DEFAULT_LATITUDE  # °N; affects sun elevation and day length
 
     # Limits
     max_charge_power: float = DEFAULT_MAX_CHARGE_POWER
@@ -110,6 +112,7 @@ class SolaxSimulatorCore:
         initial_soc = config.get(CONF_INITIAL_SOC, DEFAULT_INITIAL_SOC)
         self._state.battery_soc = initial_soc
         self._state.battery_energy = (initial_soc / 100.0) * self._state.battery_capacity
+        self._state.latitude = config.get(CONF_LATITUDE, DEFAULT_LATITUDE)
 
     @property
     def state(self) -> SimulatorState:
@@ -156,25 +159,55 @@ class SolaxSimulatorCore:
         if self._state.use_real_time:
             self._state.simulated_hour = now.hour + now.minute / 60.0
 
-        self._update_pv_production()
+        self._update_pv_production(now)
         self._update_house_load(now)
         self._simulate_power_flow(dt)
         self._update_temperatures()
         self._update_energy_counters(dt)
         self._notify_listeners()
 
-    def _update_pv_production(self) -> None:
-        """Update PV production based on time of day and weather."""
+    def _solar_elevation_rad(self, lat_deg: float, now: datetime) -> float:
+        """Solar elevation angle in radians (0 = horizon, π/2 = zenith).
+
+        Uses latitude and date for realistic season/day length; winter and
+        high latitudes get shorter days and lower peak sun.
+        """
+        day_of_year = now.timetuple().tm_yday
         hour = self._state.simulated_hour
 
-        if 6 <= hour <= 18:
-            angle = (hour - 6) * 15
-            solar_factor = math.sin(math.radians(angle))
-        else:
-            solar_factor = 0.0
+        # Solar declination (approx, degrees)
+        decl_deg = 23.45 * math.sin(
+            math.radians(360.0 / 365.0 * (284 + day_of_year))
+        )
+        # Hour angle: 15° per hour from solar noon (12)
+        hour_angle_deg = 15.0 * (12.0 - hour)
+
+        lat_rad = math.radians(lat_deg)
+        decl_rad = math.radians(decl_deg)
+        ha_rad = math.radians(hour_angle_deg)
+
+        sin_elev = (
+            math.sin(lat_rad) * math.sin(decl_rad)
+            + math.cos(lat_rad) * math.cos(decl_rad) * math.cos(ha_rad)
+        )
+        return math.asin(max(-1.0, min(1.0, sin_elev)))
+
+    def _update_pv_production(self, now: datetime | None = None) -> None:
+        """Update PV production from sun elevation (location + date + time) and weather."""
+        if now is None:
+            # For tests / manual calls: use summer solstice + simulated_hour
+            ref = date(2024, 6, 21)
+            h, m = int(self._state.simulated_hour), int(
+                (self._state.simulated_hour % 1) * 60
+            )
+            now = datetime.combine(ref, time(h, m))
+        lat = self._state.latitude
+        elevation_rad = self._solar_elevation_rad(lat, now)
+        # PV output ∝ sin(elevation) when sun above horizon
+        solar_factor = max(0.0, math.sin(elevation_rad))
 
         weather_factor = WEATHER_PV_MULTIPLIER.get(self._state.weather, 0.5)
-        variation = 1.0 + (random.random() - 0.5) * 0.1
+        variation = 1.0 + (random.random() - 0.5) * 0.08
 
         self._state.pv_power = (
             self._state.max_pv_power * solar_factor * weather_factor * variation

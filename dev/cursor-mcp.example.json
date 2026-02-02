@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "Home Assistant": {
+      "command": "mcp-proxy",
+      "args": [
+        "--transport=streamablehttp",
+        "--stateless",
+        "http://localhost:8123/api/mcp"
+      ],
+      "env": {
+        "API_ACCESS_TOKEN": "<paste contents of dev/config/.ha_mcp_token after running ./dev/seed.sh>"
+      }
+    }
+  }
+}

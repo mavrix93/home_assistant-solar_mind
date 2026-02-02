@@ -9,5 +9,5 @@
   "iot_class": "local_polling",
   "integration_type": "hub",
   "requirements": [],
-  "after_dependencies": ["input_select"]
+  "after_dependencies": ["input_select", "open_meteo", "cz_energy_spot_prices", "solax_pv_simulator"]
 }

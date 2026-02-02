@@ -5,7 +5,7 @@ Seed Home Assistant .storage directory for development sandbox.
 This script creates the necessary .storage files to:
 - Skip onboarding
 - Create a default user (dev/dev)
-- Pre-install Solax PV Simulator, Czech Energy Spot Prices, Open-Meteo weather, and Solar Mind
+- Pre-install Solax PV Simulator, Czech Energy Spot Prices, Open-Meteo weather, Solar Mind, and Model Context Protocol Server
 - Set up a default Lovelace dashboard
 
 Open-Meteo is used for weather forecast (good accuracy for Czech Republic and cloud coverage).
@@ -54,6 +54,18 @@ CZ_ENERGY_SPOT_PRICES_SENSOR = "sensor.current_spot_electricity_price"
 OPEN_METEO_ZONE = "zone.home"  # Uses HA home zone from core.config (Prague coords)
 OPEN_METEO_WEATHER_ENTITY = "weather.open_meteo"  # Entity ID created by Open-Meteo integration
 
+# Solax Simulator entity IDs (base names; coordinator resolves _2 etc. if HA assigns them).
+SOLAX_BATTERY_SOC = "sensor.solax_simulator_battery_soc"
+SOLAX_BATTERY_POWER = "sensor.solax_simulator_battery_power"
+SOLAX_REMOTECONTROL_POWER_CONTROL = "select.solax_simulator_remote_control_power_control"
+SOLAX_REMOTECONTROL_ACTIVE_POWER = "number.solax_simulator_remote_control_active_power"
+SOLAX_PV_POWER = "sensor.solax_simulator_pv_power"
+SOLAX_GRID_POWER = "sensor.solax_simulator_grid_power"
+SOLAX_HOUSE_LOAD = "sensor.solax_simulator_house_load"
+SOLAX_ENERGY_STORAGE_MODE = "select.solax_simulator_energy_storage_mode"
+SOLAX_REMOTECONTROL_TRIGGER = "button.solax_simulator_remote_control_trigger"
+SOLAX_REMOTECONTROL_AUTOREPEAT_DURATION = "number.solax_simulator_remote_control_autorepeat_duration"
+
 
 def generate_password_hash(password: str) -> str:
     """Generate HA-compatible password hash (bcrypt, rounds=12, base64 for storage)."""
@@ -72,6 +84,11 @@ def generate_uuid() -> str:
 def generate_token() -> str:
     """Generate a random token."""
     return secrets.token_hex(32)
+
+
+def generate_long_lived_token() -> str:
+    """Generate a token for long-lived access (HA uses 64 bytes = 128 hex chars)."""
+    return secrets.token_hex(64)
 
 
 def write_json(path: Path, data: dict) -> None:
@@ -104,8 +121,19 @@ def create_onboarding() -> None:
     write_json(STORAGE_DIR / "onboarding", data)
 
 
-def create_auth(user_id: str, credential_id: str, refresh_token_id: str) -> dict:
-    """Create auth file with user and credentials."""
+def create_auth(
+    user_id: str,
+    credential_id: str,
+    refresh_token_id: str,
+) -> tuple[dict, str]:
+    """Create auth file with user, credentials, and a fixed MCP access token.
+
+    We use a single refresh token (type normal) whose token string is the MCP token,
+    so HA accepts it for Bearer auth without depending on long_lived_access_token handling.
+    Returns (auth_data, mcp_token_string). The token is valid as Bearer for /api/*.
+    """
+    mcp_token = generate_long_lived_token()
+    now = datetime.now(timezone.utc).isoformat()
     data = {
         "version": 1,
         "minor_version": 1,
@@ -141,23 +169,31 @@ def create_auth(user_id: str, credential_id: str, refresh_token_id: str) -> dict
                     "id": refresh_token_id,
                     "user_id": user_id,
                     "client_id": None,
-                    "client_name": None,
+                    "client_name": "MCP (Cursor / dev sandbox)",
                     "client_icon": None,
                     "token_type": "normal",
-                    "created_at": "2024-01-01T00:00:00+00:00",
+                    "created_at": now,
                     "access_token_expiration": 1800.0,
-                    "token": generate_token(),
+                    "token": mcp_token,
                     "jwt_key": generate_token(),
                     "last_used_at": None,
                     "last_used_ip": None,
                     "credential_id": credential_id,
                     "version": None,
-                }
+                },
             ],
         },
     }
     write_json(STORAGE_DIR / "auth", data)
-    return data
+    return data, mcp_token
+
+
+def _write_mcp_token_file(token: str) -> None:
+    """Write the MCP long-lived token to dev/config/.ha_mcp_token (gitignored)."""
+    token_file = STORAGE_DIR.parent / ".ha_mcp_token"
+    token_file.write_text(token.strip(), encoding="utf-8")
+    token_file.chmod(0o600)
+    print(f"  Created: {token_file.relative_to(SCRIPT_DIR)} (use as API_ACCESS_TOKEN for Cursor MCP)")
 
 
 def create_auth_provider() -> None:
@@ -287,8 +323,9 @@ def create_config_entries(
     cz_entry_id: str,
     open_meteo_entry_id: str,
     solar_mind_entry_id: str,
+    mcp_entry_id: str,
 ) -> None:
-    """Create core.config_entries with Solax Simulator, Czech OTE, Open-Meteo, and Solar Mind.
+    """Create core.config_entries with Solax Simulator, Czech OTE, Open-Meteo, Solar Mind, and MCP Server.
 
     HA expects each entry to have created_at, modified_at (ISO strings),
     discovery_keys (dict), and subentries (list). Storage minor_version 5.
@@ -373,10 +410,10 @@ def create_config_entries(
             "data": {
                 "name": "Solar Mind",
                 "solax_device_type": "modbus_remote",
-                "remotecontrol_power_control": "select.solax_simulator_remote_control_power_control",
-                "remotecontrol_active_power": "number.solax_simulator_remote_control_active_power",
-                "remotecontrol_trigger": "button.solax_simulator_remote_control_trigger",
-                "battery_soc": "sensor.solax_simulator_battery_soc",
+                "remotecontrol_power_control": SOLAX_REMOTECONTROL_POWER_CONTROL,
+                "remotecontrol_active_power": SOLAX_REMOTECONTROL_ACTIVE_POWER,
+                "remotecontrol_trigger": SOLAX_REMOTECONTROL_TRIGGER,
+                "battery_soc": SOLAX_BATTERY_SOC,
                 "price_sensor": CZ_ENERGY_SPOT_PRICES_SENSOR,
                 "price_source": "czech_ote",
                 "weather_entity": OPEN_METEO_WEATHER_ENTITY,
@@ -399,6 +436,24 @@ def create_config_entries(
             "pref_disable_polling": False,
             "source": "user",
             "unique_id": "solar_mind_solar_mind",
+            "disabled_by": None,
+            "created_at": now,
+            "modified_at": now,
+            "discovery_keys": {},
+            "subentries": [],
+        },
+        {
+            "entry_id": mcp_entry_id,
+            "version": 1,
+            "minor_version": 1,
+            "domain": "mcp_server",
+            "title": "Home Assistant",
+            "data": {"llm_hass_api": ["assist"]},
+            "options": {},
+            "pref_disable_new_entities": False,
+            "pref_disable_polling": False,
+            "source": "user",
+            "unique_id": "mcp_server_sandbox",
             "disabled_by": None,
             "created_at": now,
             "modified_at": now,
@@ -441,7 +496,7 @@ def create_lovelace() -> None:
                                 "content": (
                                     "## Solar Mind Development Sandbox\n\n"
                                     "Pre-configured: **Solax PV Simulator**, **Czech Energy Spot Prices**, **Open-Meteo weather**, and **Solar Mind**. "
-                                    "Price entity is set to the Czech OTE spot price sensor; weather uses Open-Meteo (Prague) for solar forecasting."
+                                    "If you see \"Configuration error\" or unavailable entities, see README → Local Sandbox."
                                 ),
                             },
                             {
@@ -452,28 +507,28 @@ def create_lovelace() -> None:
                                 "type": "entities",
                                 "title": "Solax Simulator - Battery",
                                 "entities": [
-                                    "sensor.solax_simulator_battery_soc",
-                                    "sensor.solax_simulator_battery_power",
-                                    "select.solax_simulator_remote_control_power_control",
-                                    "number.solax_simulator_remote_control_active_power",
+                                    SOLAX_BATTERY_SOC,
+                                    SOLAX_BATTERY_POWER,
+                                    SOLAX_REMOTECONTROL_POWER_CONTROL,
+                                    SOLAX_REMOTECONTROL_ACTIVE_POWER,
                                 ],
                             },
                             {
                                 "type": "entities",
                                 "title": "Solax Simulator - Power",
                                 "entities": [
-                                    "sensor.solax_simulator_pv_power",
-                                    "sensor.solax_simulator_grid_power",
-                                    "sensor.solax_simulator_house_load",
+                                    SOLAX_PV_POWER,
+                                    SOLAX_GRID_POWER,
+                                    SOLAX_HOUSE_LOAD,
                                 ],
                             },
                             {
                                 "type": "entities",
                                 "title": "Solax Simulator - Controls",
                                 "entities": [
-                                    "select.solax_simulator_energy_storage_mode",
-                                    "button.solax_simulator_remote_control_trigger",
-                                    "number.solax_simulator_remote_control_autorepeat_duration",
+                                    SOLAX_ENERGY_STORAGE_MODE,
+                                    SOLAX_REMOTECONTROL_TRIGGER,
+                                    SOLAX_REMOTECONTROL_AUTOREPEAT_DURATION,
                                 ],
                             },
                         ],
@@ -513,6 +568,130 @@ def create_lovelace() -> None:
                             },
                         ],
                     },
+                    {
+                        "title": "Energy Plan",
+                        "path": "energy-plan",
+                        "icon": "mdi:calendar-clock",
+                        "cards": [
+                            {
+                                "type": "markdown",
+                                "content": (
+                                    "## Energy Forecast & Plan\n\n"
+                                    "24-48 hour energy planning based on weather forecast and spot prices. "
+                                    "Shows when to charge/discharge batteries, expected PV generation, and cost estimates."
+                                ),
+                            },
+                            {
+                                "type": "entities",
+                                "title": "Current Hour Plan",
+                                "entities": [
+                                    "sensor.solar_mind_current_hour_plan",
+                                    "sensor.solar_mind_status",
+                                    "sensor.solar_mind_battery_soc",
+                                    "sensor.solar_mind_predicted_soc_6h",
+                                ],
+                                "show_header_toggle": False,
+                            },
+                            {
+                                "type": "horizontal-stack",
+                                "cards": [
+                                    {
+                                        "type": "entity",
+                                        "entity": "sensor.solar_mind_pv_forecast_today",
+                                        "name": "PV Today",
+                                        "icon": "mdi:solar-power-variant",
+                                    },
+                                    {
+                                        "type": "entity",
+                                        "entity": "sensor.solar_mind_pv_forecast_tomorrow",
+                                        "name": "PV Tomorrow",
+                                        "icon": "mdi:solar-power-variant-outline",
+                                    },
+                                    {
+                                        "type": "entity",
+                                        "entity": "sensor.solar_mind_load_forecast_today",
+                                        "name": "Load Today",
+                                        "icon": "mdi:home-lightning-bolt",
+                                    },
+                                ],
+                            },
+                            {
+                                "type": "entities",
+                                "title": "Planned Actions",
+                                "entities": [
+                                    "sensor.solar_mind_next_planned_charge",
+                                    "sensor.solar_mind_next_planned_discharge",
+                                    "sensor.solar_mind_next_cheap_hour",
+                                ],
+                                "show_header_toggle": False,
+                            },
+                            {
+                                "type": "horizontal-stack",
+                                "cards": [
+                                    {
+                                        "type": "entity",
+                                        "entity": "sensor.solar_mind_estimated_daily_cost",
+                                        "name": "Est. Cost",
+                                        "icon": "mdi:cash-minus",
+                                    },
+                                    {
+                                        "type": "entity",
+                                        "entity": "sensor.solar_mind_estimated_daily_revenue",
+                                        "name": "Est. Revenue",
+                                        "icon": "mdi:cash-plus",
+                                    },
+                                    {
+                                        "type": "entity",
+                                        "entity": "sensor.solar_mind_plan_horizon",
+                                        "name": "Plan Horizon",
+                                        "icon": "mdi:calendar-clock",
+                                    },
+                                ],
+                            },
+                        ],
+                    },
+                    {
+                        "title": "Forecast History",
+                        "path": "forecast-history",
+                        "icon": "mdi:chart-line",
+                        "cards": [
+                            {
+                                "type": "markdown",
+                                "content": (
+                                    "## Forecast Accuracy\n\n"
+                                    "Compare predictions vs actual values to track forecast accuracy over time."
+                                ),
+                            },
+                            {
+                                "type": "entities",
+                                "title": "Forecast Accuracy",
+                                "entities": [
+                                    "sensor.solar_mind_forecast_accuracy",
+                                    "sensor.solar_mind_historical_comparison",
+                                ],
+                                "show_header_toggle": False,
+                            },
+                            {
+                                "type": "entities",
+                                "title": "Plan Details",
+                                "entities": [
+                                    "sensor.solar_mind_plan_horizon",
+                                    "sensor.solar_mind_last_update",
+                                ],
+                                "show_header_toggle": False,
+                            },
+                            {
+                                "type": "markdown",
+                                "content": (
+                                    "### How to View Historical Data\n\n"
+                                    "1. Click on any sensor above to see its history graph\n"
+                                    "2. Use the History panel (sidebar) for detailed comparisons\n"
+                                    "3. Sensor attributes contain detailed hourly forecast vs actual data\n\n"
+                                    "**Tip:** Enable the Recorder component with history to store more data."
+                                ),
+                            },
+                        ],
+                    },
                 ],
             }
         },
@@ -549,17 +728,23 @@ def main() -> None:
     cz_entry_id = generate_uuid()
     open_meteo_entry_id = generate_uuid()
     solar_mind_entry_id = generate_uuid()
+    mcp_entry_id = generate_uuid()
 
     # Create storage files
     create_onboarding()
-    create_auth(user_id, credential_id, refresh_token_id)
+    _, mcp_token = create_auth(user_id, credential_id, refresh_token_id)
+    _write_mcp_token_file(mcp_token)
     create_auth_provider()
     create_core_config()
     create_core_uuid(instance_uuid)
     create_person(user_id, person_id)
     create_core_analytics(instance_uuid)
     create_config_entries(
-        simulator_entry_id, cz_entry_id, open_meteo_entry_id, solar_mind_entry_id
+        simulator_entry_id,
+        cz_entry_id,
+        open_meteo_entry_id,
+        solar_mind_entry_id,
+        mcp_entry_id,
     )
     create_lovelace()
     create_lovelace_dashboards()
@@ -575,8 +760,9 @@ def main() -> None:
     print(f"  2. Open: http://localhost:8123")
     print(f"  3. Login with: {USERNAME} / {PASSWORD}")
     print(
-        f"  4. Integrations Solax Simulator, Czech Energy Spot Prices, Open-Meteo, and Solar Mind are pre-configured."
+        "  4. Integrations Solax Simulator, Czech Energy Spot Prices, Open-Meteo, Solar Mind, and Model Context Protocol Server are pre-configured."
     )
+    print(f"  5. MCP token for Cursor: dev/config/.ha_mcp_token (use in Cursor MCP env as API_ACCESS_TOKEN)")
 
 
 if __name__ == "__main__":

@@ -14,11 +14,14 @@ from homeassistant.helpers import selector
 from .const import (
     CONF_BATTERY_CAPACITY,
     CONF_INITIAL_SOC,
+    CONF_LATITUDE,
     CONF_MAX_CHARGE_POWER,
     CONF_MAX_DISCHARGE_POWER,
     CONF_MAX_PV_POWER,
+    CONF_WEATHER_ENTITY,
     DEFAULT_BATTERY_CAPACITY,
     DEFAULT_INITIAL_SOC,
+    DEFAULT_LATITUDE,
     DEFAULT_MAX_CHARGE_POWER,
     DEFAULT_MAX_DISCHARGE_POWER,
     DEFAULT_MAX_PV_POWER,
@@ -113,6 +116,23 @@ class SolaxSimulatorConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                             unit_of_measurement="%",
                             mode=selector.NumberSelectorMode.SLIDER,
                         )
+                    ),
+                    vol.Optional(
+                        CONF_LATITUDE,
+                        default=getattr(
+                            self.hass.config, "latitude", DEFAULT_LATITUDE
+                        ),
+                    ): selector.NumberSelector(
+                        selector.NumberSelectorConfig(
+                            min=-90,
+                            max=90,
+                            step=0.5,
+                            unit_of_measurement="°",
+                            mode=selector.NumberSelectorMode.BOX,
+                        )
+                    ),
+                    vol.Optional(CONF_WEATHER_ENTITY): selector.EntitySelector(
+                        selector.EntitySelectorConfig(domain="weather")
                     ),
                 }
             ),

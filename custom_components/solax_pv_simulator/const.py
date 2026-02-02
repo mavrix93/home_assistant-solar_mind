@@ -13,6 +13,8 @@ CONF_MAX_DISCHARGE_POWER: Final = "max_discharge_power"
 CONF_MAX_PV_POWER: Final = "max_pv_power"
 CONF_INITIAL_SOC: Final = "initial_soc"
 CONF_SIMULATION_SPEED: Final = "simulation_speed"
+CONF_LATITUDE: Final = "latitude"
+CONF_WEATHER_ENTITY: Final = "weather_entity"
 
 # Default values
 DEFAULT_BATTERY_CAPACITY: Final = 10000  # Wh (10 kWh)
@@ -21,6 +23,7 @@ DEFAULT_MAX_DISCHARGE_POWER: Final = 5000  # W
 DEFAULT_MAX_PV_POWER: Final = 10000  # W (10 kW peak)
 DEFAULT_INITIAL_SOC: Final = 50  # %
 DEFAULT_SIMULATION_SPEED: Final = 1.0  # Real-time
+DEFAULT_LATITUDE: Final = 51.5  # °N (e.g. UK); affects day length and sun elevation
 
 # Solax Remote Control Mode options (matching real Solax Modbus)
 class RemoteControlMode(StrEnum):
@@ -83,11 +86,11 @@ class SimulatedWeather(StrEnum):
     NIGHT = "night"
 
 
-# Weather to PV production multipliers
+# Weather to PV production multipliers (conservative for cloudy/rainy winter realism)
 WEATHER_PV_MULTIPLIER: Final[dict[str, float]] = {
     SimulatedWeather.SUNNY: 1.0,
-    SimulatedWeather.PARTLY_CLOUDY: 0.6,
-    SimulatedWeather.CLOUDY: 0.2,
-    SimulatedWeather.RAINY: 0.1,
+    SimulatedWeather.PARTLY_CLOUDY: 0.45,
+    SimulatedWeather.CLOUDY: 0.07,
+    SimulatedWeather.RAINY: 0.03,
     SimulatedWeather.NIGHT: 0.0,
 }

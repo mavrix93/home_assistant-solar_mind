@@ -1,9 +1,8 @@
 """Sensor platform for Solar Mind integration."""
-from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from homeassistant.components.sensor import (
@@ -13,7 +12,7 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_NAME
+from homeassistant.const import CONF_NAME, UnitOfEnergy, UnitOfPower
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceEntryType, DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -21,7 +20,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN, STRATEGY_DISPLAY_NAMES, SystemStatus
 from .coordinator import SolarMindCoordinator
-from .models import SolarMindData
+from .models import PlannedAction, SolarMindData
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -79,7 +78,7 @@ def _get_next_cheap_hour(data: SolarMindData) -> str | None:
     if not data.prices.today and not data.prices.tomorrow:
         return None
     
-    now = datetime.now()
+    now = datetime.now(timezone.utc)
     cheap_hours = data.prices.get_cheapest_hours(6)
     
     # Find next cheap hour that's in the future
@@ -95,7 +94,7 @@ def _get_next_cheap_hour_attrs(data: SolarMindData) -> dict[str, Any]:
     if not data.prices.today and not data.prices.tomorrow:
         return {}
     
-    now = datetime.now()
+    now = datetime.now(timezone.utc)
     cheap_hours = data.prices.get_cheapest_hours(6)
     
     attrs: dict[str, Any] = {"cheap_hours": []}
@@ -154,6 +153,340 @@ def _get_battery_soc(data: SolarMindData) -> float | None:
     return data.solax_state.battery_soc
 
 
+# ============ NEW FORECAST/PLAN SENSORS ============
+
+
+def _get_pv_forecast_today(data: SolarMindData) -> float | None:
+    """Get total PV forecast for today in kWh."""
+    if not data.energy_plan or not data.energy_plan.entries:
+        return None
+    now = datetime.now(timezone.utc)
+    today_end = now.replace(hour=23, minute=59, second=59)
+    total_wh = sum(
+        e.pv_forecast_wh
+        for e in data.energy_plan.entries
+        if e.hour.date() == now.date() and e.hour <= today_end
+    )
+    return round(total_wh / 1000, 2)
+
+
+def _get_pv_forecast_today_attrs(data: SolarMindData) -> dict[str, Any]:
+    """Get PV forecast details for today."""
+    if not data.energy_plan or not data.energy_plan.entries:
+        return {}
+    now = datetime.now(timezone.utc)
+    hourly = []
+    for e in data.energy_plan.entries:
+        if e.hour.date() == now.date():
+            hourly.append({
+                "hour": e.hour.strftime("%H:00"),
+                "pv_wh": round(e.pv_forecast_wh, 1),
+                "solar_potential": round(e.solar_potential, 2),
+                "condition": e.weather_condition,
+            })
+    return {"hourly_forecast": hourly}
+
+
+def _get_pv_forecast_tomorrow(data: SolarMindData) -> float | None:
+    """Get total PV forecast for tomorrow in kWh."""
+    if not data.energy_plan or not data.energy_plan.entries:
+        return None
+    now = datetime.now(timezone.utc)
+    tomorrow = now.date() + timedelta(days=1)
+    total_wh = sum(
+        e.pv_forecast_wh
+        for e in data.energy_plan.entries
+        if e.hour.date() == tomorrow
+    )
+    if total_wh == 0:
+        return None
+    return round(total_wh / 1000, 2)
+
+
+def _get_pv_forecast_tomorrow_attrs(data: SolarMindData) -> dict[str, Any]:
+    """Get PV forecast details for tomorrow."""
+    if not data.energy_plan or not data.energy_plan.entries:
+        return {}
+    now = datetime.now(timezone.utc)
+    tomorrow = now.date() + timedelta(days=1)
+    hourly = []
+    for e in data.energy_plan.entries:
+        if e.hour.date() == tomorrow:
+            hourly.append({
+                "hour": e.hour.strftime("%H:00"),
+                "pv_wh": round(e.pv_forecast_wh, 1),
+                "solar_potential": round(e.solar_potential, 2),
+                "condition": e.weather_condition,
+            })
+    return {"hourly_forecast": hourly, "available": len(hourly) > 0}
+
+
+def _get_load_forecast_today(data: SolarMindData) -> float | None:
+    """Get total load forecast for today in kWh."""
+    if not data.energy_plan or not data.energy_plan.entries:
+        return None
+    now = datetime.now(timezone.utc)
+    total_wh = sum(
+        e.load_forecast_wh
+        for e in data.energy_plan.entries
+        if e.hour.date() == now.date()
+    )
+    return round(total_wh / 1000, 2)
+
+
+def _get_load_forecast_today_attrs(data: SolarMindData) -> dict[str, Any]:
+    """Get load forecast details for today."""
+    if not data.energy_plan or not data.energy_plan.entries:
+        return {}
+    now = datetime.now(timezone.utc)
+    hourly = []
+    for e in data.energy_plan.entries:
+        if e.hour.date() == now.date():
+            hourly.append({
+                "hour": e.hour.strftime("%H:00"),
+                "load_wh": round(e.load_forecast_wh, 1),
+            })
+    return {"hourly_forecast": hourly}
+
+
+def _get_next_planned_charge(data: SolarMindData) -> str:
+    """Get next planned charge time."""
+    if not data.energy_plan:
+        return "—"
+    now = datetime.now(timezone.utc)
+    for e in data.energy_plan.entries:
+        if e.hour > now and e.action == PlannedAction.CHARGE:
+            return e.hour.strftime("%H:%M")
+    return "—"
+
+
+def _get_next_planned_charge_attrs(data: SolarMindData) -> dict[str, Any]:
+    """Get next planned charge details."""
+    if not data.energy_plan:
+        return {}
+    now = datetime.now(timezone.utc)
+    charge_hours = []
+    for e in data.energy_plan.entries:
+        if e.hour > now and e.action == PlannedAction.CHARGE:
+            charge_hours.append({
+                "time": e.hour.strftime("%H:%M"),
+                "date": e.hour.strftime("%Y-%m-%d"),
+                "price": round(e.price, 4) if e.price else None,
+                "reason": e.reason,
+                "charge_wh": round(e.planned_battery_charge_wh, 1),
+            })
+    return {
+        "upcoming_charge_hours": charge_hours[:12],
+        "total_charge_hours": len(charge_hours),
+    }
+
+
+def _get_next_planned_discharge(data: SolarMindData) -> str:
+    """Get next planned discharge time."""
+    if not data.energy_plan:
+        return "—"
+    now = datetime.now(timezone.utc)
+    for e in data.energy_plan.entries:
+        if e.hour > now and e.action == PlannedAction.DISCHARGE:
+            return e.hour.strftime("%H:%M")
+    return "—"
+
+
+def _get_next_planned_discharge_attrs(data: SolarMindData) -> dict[str, Any]:
+    """Get next planned discharge details."""
+    if not data.energy_plan:
+        return {}
+    now = datetime.now(timezone.utc)
+    discharge_hours = []
+    for e in data.energy_plan.entries:
+        if e.hour > now and e.action == PlannedAction.DISCHARGE:
+            discharge_hours.append({
+                "time": e.hour.strftime("%H:%M"),
+                "date": e.hour.strftime("%Y-%m-%d"),
+                "price": round(e.price, 4) if e.price else None,
+                "reason": e.reason,
+                "discharge_wh": round(e.planned_battery_discharge_wh, 1),
+            })
+    return {
+        "upcoming_discharge_hours": discharge_hours[:12],
+        "total_discharge_hours": len(discharge_hours),
+    }
+
+
+def _get_predicted_soc_6h(data: SolarMindData) -> float | None:
+    """Get predicted battery SOC in 6 hours."""
+    if not data.energy_plan or not data.energy_plan.entries:
+        return None
+    now = datetime.now(timezone.utc)
+    target_time = now + timedelta(hours=6)
+    for e in data.energy_plan.entries:
+        if e.hour <= target_time < e.hour + timedelta(hours=1):
+            return round(e.predicted_soc, 1)
+    return None
+
+
+def _get_predicted_soc_attrs(data: SolarMindData) -> dict[str, Any]:
+    """Get predicted SOC timeline."""
+    if not data.energy_plan or not data.energy_plan.entries:
+        return {}
+    now = datetime.now(timezone.utc)
+    soc_timeline = []
+    for e in data.energy_plan.entries[:24]:  # Next 24 hours
+        if e.hour >= now:
+            soc_timeline.append({
+                "hour": e.hour.strftime("%H:%M"),
+                "soc": round(e.predicted_soc, 1),
+                "action": e.action.value,
+            })
+    return {"soc_forecast": soc_timeline}
+
+
+def _get_estimated_daily_cost(data: SolarMindData) -> float | None:
+    """Get estimated daily grid cost."""
+    if not data.energy_plan:
+        return None
+    return round(data.energy_plan.estimated_cost, 2)
+
+
+def _get_cost_attrs(data: SolarMindData) -> dict[str, Any]:
+    """Get cost/revenue details."""
+    if not data.energy_plan:
+        return {}
+    return {
+        "estimated_revenue": round(data.energy_plan.estimated_revenue, 2),
+        "net_cost": round(
+            data.energy_plan.estimated_cost - data.energy_plan.estimated_revenue, 2
+        ),
+        "grid_import_kwh": round(data.energy_plan.total_grid_import_wh / 1000, 2),
+        "grid_export_kwh": round(data.energy_plan.total_grid_export_wh / 1000, 2),
+    }
+
+
+def _get_estimated_daily_revenue(data: SolarMindData) -> float | None:
+    """Get estimated daily grid revenue."""
+    if not data.energy_plan:
+        return None
+    return round(data.energy_plan.estimated_revenue, 2)
+
+
+def _get_current_hour_plan(data: SolarMindData) -> str | None:
+    """Get current hour's planned action."""
+    if not data.energy_plan:
+        return None
+    now = datetime.now(timezone.utc)
+    entry = data.energy_plan.get_entry_at(now)
+    if entry:
+        return entry.action.value
+    return None
+
+
+def _get_current_hour_plan_attrs(data: SolarMindData) -> dict[str, Any]:
+    """Get current hour's plan details."""
+    if not data.energy_plan:
+        return {}
+    now = datetime.now(timezone.utc)
+    entry = data.energy_plan.get_entry_at(now)
+    if not entry:
+        return {}
+    return {
+        "pv_forecast_wh": round(entry.pv_forecast_wh, 1),
+        "load_forecast_wh": round(entry.load_forecast_wh, 1),
+        "price": round(entry.price, 4) if entry.price else None,
+        "grid_import_wh": round(entry.planned_grid_import_wh, 1),
+        "grid_export_wh": round(entry.planned_grid_export_wh, 1),
+        "battery_charge_wh": round(entry.planned_battery_charge_wh, 1),
+        "battery_discharge_wh": round(entry.planned_battery_discharge_wh, 1),
+        "predicted_soc": round(entry.predicted_soc, 1),
+        "reason": entry.reason,
+        "weather": entry.weather_condition,
+        "solar_potential": round(entry.solar_potential, 2),
+    }
+
+
+def _get_forecast_accuracy_pv(data: SolarMindData) -> float | str:
+    """Get PV forecast accuracy percentage."""
+    if not data.plan_history:
+        return "No data"
+    accuracy = data.plan_history.pv_forecast_accuracy
+    if accuracy is None:
+        return "No data"
+    return round(accuracy, 1)
+
+
+def _get_accuracy_attrs(data: SolarMindData) -> dict[str, Any]:
+    """Get forecast accuracy details."""
+    if not data.plan_history:
+        return {}
+    recent = data.plan_history.get_recent(24)
+    pv_errors = []
+    load_errors = []
+    for c in recent:
+        if c.pv_error_wh is not None:
+            pv_errors.append(c.pv_error_wh)
+        if c.load_error_wh is not None:
+            load_errors.append(c.load_error_wh)
+    return {
+        "pv_accuracy_pct": data.plan_history.pv_forecast_accuracy,
+        "load_accuracy_pct": data.plan_history.load_forecast_accuracy,
+        "samples_24h": len(recent),
+        "avg_pv_error_wh": round(sum(pv_errors) / len(pv_errors), 1) if pv_errors else None,
+        "avg_load_error_wh": round(sum(load_errors) / len(load_errors), 1) if load_errors else None,
+    }
+
+
+def _get_plan_horizon(data: SolarMindData) -> int | None:
+    """Get how many hours the plan extends."""
+    if not data.energy_plan or not data.energy_plan.entries:
+        return None
+    return len(data.energy_plan.entries)
+
+
+def _get_plan_horizon_attrs(data: SolarMindData) -> dict[str, Any]:
+    """Get plan horizon details."""
+    if not data.energy_plan or not data.energy_plan.entries:
+        return {}
+    now = datetime.now(timezone.utc)
+    return {
+        "plan_created": data.energy_plan.created_at.isoformat() if data.energy_plan.created_at else None,
+        "plan_ends": data.energy_plan.entries[-1].hour.isoformat() if data.energy_plan.entries else None,
+        "tomorrow_available": any(
+            e.hour.date() > now.date() for e in data.energy_plan.entries
+        ),
+    }
+
+
+def _get_historical_comparison(data: SolarMindData) -> str | None:
+    """Get summary of recent prediction accuracy."""
+    if not data.plan_history or not data.plan_history.comparisons:
+        return "No data"
+    accuracy = data.plan_history.pv_forecast_accuracy
+    if accuracy is not None:
+        return f"{accuracy:.0f}%"
+    return "Calculating..."
+
+
+def _get_historical_attrs(data: SolarMindData) -> dict[str, Any]:
+    """Get historical comparison details."""
+    if not data.plan_history or not data.plan_history.comparisons:
+        return {}
+    recent = data.plan_history.get_recent(24)
+    comparisons = []
+    for c in recent:
+        if c.predicted and c.actual:
+            comparisons.append({
+                "hour": c.hour.strftime("%Y-%m-%d %H:00"),
+                "predicted_pv_wh": round(c.predicted.pv_forecast_wh, 1),
+                "actual_pv_wh": round(c.actual.pv_actual_wh, 1) if c.actual.pv_actual_wh else None,
+                "pv_error_wh": round(c.pv_error_wh, 1) if c.pv_error_wh is not None else None,
+                "predicted_soc": round(c.predicted.predicted_soc, 1),
+                "actual_soc": round(c.actual.battery_soc_end, 1) if c.actual.battery_soc_end else None,
+            })
+    return {
+        "recent_comparisons": comparisons,
+        "total_samples": len(data.plan_history.comparisons),
+    }
+
+
 def _get_status_attrs(data: SolarMindData) -> dict[str, Any]:
     """Get status attributes."""
     attrs: dict[str, Any] = {}
@@ -196,6 +529,7 @@ def _get_price_attrs(data: SolarMindData) -> dict[str, Any]:
 
 
 SENSOR_DESCRIPTIONS: tuple[SolarMindSensorEntityDescription, ...] = (
+    # ============ EXISTING SENSORS ============
     SolarMindSensorEntityDescription(
         key="status",
         name="Status",
@@ -213,8 +547,7 @@ SENSOR_DESCRIPTIONS: tuple[SolarMindSensorEntityDescription, ...] = (
         key="current_price",
         name="Current Price",
         icon="mdi:currency-eur",
-        device_class=SensorDeviceClass.MONETARY,
-        state_class=None,  # monetary sensors use None or 'total', not measurement
+        state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement="CZK/kWh",
         value_fn=_get_current_price,
         attr_fn=_get_price_attrs,
@@ -273,6 +606,110 @@ SENSOR_DESCRIPTIONS: tuple[SolarMindSensorEntityDescription, ...] = (
         icon="mdi:alert-circle-outline",
         entity_registry_enabled_default=False,
         value_fn=_get_last_error,
+    ),
+    # ============ NEW FORECAST/PLAN SENSORS ============
+    SolarMindSensorEntityDescription(
+        key="pv_forecast_today",
+        name="PV Forecast Today",
+        icon="mdi:solar-power-variant",
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.TOTAL,
+        native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+        value_fn=_get_pv_forecast_today,
+        attr_fn=_get_pv_forecast_today_attrs,
+    ),
+    SolarMindSensorEntityDescription(
+        key="pv_forecast_tomorrow",
+        name="PV Forecast Tomorrow",
+        icon="mdi:solar-power-variant-outline",
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.TOTAL,
+        native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+        value_fn=_get_pv_forecast_tomorrow,
+        attr_fn=_get_pv_forecast_tomorrow_attrs,
+    ),
+    SolarMindSensorEntityDescription(
+        key="load_forecast_today",
+        name="Load Forecast Today",
+        icon="mdi:home-lightning-bolt",
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.TOTAL,
+        native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+        value_fn=_get_load_forecast_today,
+        attr_fn=_get_load_forecast_today_attrs,
+    ),
+    SolarMindSensorEntityDescription(
+        key="next_planned_charge",
+        name="Next Planned Charge",
+        icon="mdi:battery-charging-high",
+        value_fn=_get_next_planned_charge,
+        attr_fn=_get_next_planned_charge_attrs,
+    ),
+    SolarMindSensorEntityDescription(
+        key="next_planned_discharge",
+        name="Next Planned Discharge",
+        icon="mdi:battery-arrow-down",
+        value_fn=_get_next_planned_discharge,
+        attr_fn=_get_next_planned_discharge_attrs,
+    ),
+    SolarMindSensorEntityDescription(
+        key="predicted_soc_6h",
+        name="Predicted SOC (6h)",
+        icon="mdi:battery-clock",
+        device_class=SensorDeviceClass.BATTERY,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement="%",
+        value_fn=_get_predicted_soc_6h,
+        attr_fn=_get_predicted_soc_attrs,
+    ),
+    SolarMindSensorEntityDescription(
+        key="estimated_daily_cost",
+        name="Estimated Daily Cost",
+        icon="mdi:cash-minus",
+        device_class=SensorDeviceClass.MONETARY,
+        native_unit_of_measurement="CZK",
+        value_fn=_get_estimated_daily_cost,
+        attr_fn=_get_cost_attrs,
+    ),
+    SolarMindSensorEntityDescription(
+        key="estimated_daily_revenue",
+        name="Estimated Daily Revenue",
+        icon="mdi:cash-plus",
+        device_class=SensorDeviceClass.MONETARY,
+        native_unit_of_measurement="CZK",
+        value_fn=_get_estimated_daily_revenue,
+    ),
+    SolarMindSensorEntityDescription(
+        key="current_hour_plan",
+        name="Current Hour Plan",
+        icon="mdi:clock-time-four",
+        value_fn=_get_current_hour_plan,
+        attr_fn=_get_current_hour_plan_attrs,
+    ),
+    SolarMindSensorEntityDescription(
+        key="forecast_accuracy",
+        name="Forecast Accuracy",
+        icon="mdi:chart-line",
+        state_class=None,
+        native_unit_of_measurement="%",
+        value_fn=_get_forecast_accuracy_pv,
+        attr_fn=_get_accuracy_attrs,
+    ),
+    SolarMindSensorEntityDescription(
+        key="plan_horizon",
+        name="Plan Horizon",
+        icon="mdi:calendar-clock",
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement="hours",
+        value_fn=_get_plan_horizon,
+        attr_fn=_get_plan_horizon_attrs,
+    ),
+    SolarMindSensorEntityDescription(
+        key="historical_comparison",
+        name="Historical Accuracy",
+        icon="mdi:history",
+        value_fn=_get_historical_comparison,
+        attr_fn=_get_historical_attrs,
     ),
 )
 

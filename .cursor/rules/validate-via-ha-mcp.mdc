@@ -1,0 +1,31 @@
+---
+description: Validate sandbox and integration changes via Home Assistant MCP when available
+globs: dev/**/*,custom_components/solar_mind/**/*,custom_components/solax_pv_simulator/**/*
+alwaysApply: false
+---
+
+# Validate changes via Home Assistant MCP
+
+When working on the dev sandbox (`dev/`), Solar Mind (`custom_components/solar_mind/`), or Solax PV Simulator (`custom_components/solax_pv_simulator/`), use the **Home Assistant** MCP server to validate changes when it is connected.
+
+## When to use
+
+- After editing coordinator, sensors, strategies, or services: use MCP tools to list entities, get state of relevant sensors (e.g. `sensor.solar_mind_*`, `sensor.solax_simulator_*`), and confirm values or attributes match expectations.
+- After changing dev seed or config: ensure the sandbox is running, then use MCP to verify integrations and entities exist and are available.
+- When debugging "entity unavailable" or config issues: call MCP tools to inspect entity state, attributes, and device/registry if needed.
+
+## How
+
+1. Ensure the dev sandbox is running (`docker-compose -f dev/docker-compose.yml up -d`) and Cursor is configured with the "Home Assistant" MCP server (see README → Cursor + Home Assistant MCP).
+2. Use the MCP tools exposed by the Home Assistant server (e.g. list entities, get entity state, call service) to verify:
+   - Solar Mind and Solax Simulator entities are present and updated.
+   - Sensor states or attributes reflect the intended behavior after your code changes.
+3. If MCP is not available (e.g. sandbox stopped or server not configured), fall back to manual checks (logs, UI, pytest) and note that MCP validation was skipped.
+
+## Examples
+
+- "List entities for solar_mind and solax_simulator and show their state."
+- "Get the state of sensor.solar_mind_status (or sensor.solar_mind_status_2) and sensor.solax_simulator_battery_soc."
+- "Call the solar_mind.set_strategy service with strategy spot_price_weather and confirm the strategy entity updated."
+
+Do not perform destructive or irreversible service calls (e.g. factory reset) unless the user explicitly requests them.
