@@ -1,5 +1,4 @@
 """The Solar Mind integration."""
-from __future__ import annotations
 
 import logging
 from typing import TYPE_CHECKING
@@ -34,6 +33,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN][entry.entry_id] = coordinator
+
+    # Solax acts on the plan every hour at :00
+    coordinator.schedule_hourly_execution()
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 

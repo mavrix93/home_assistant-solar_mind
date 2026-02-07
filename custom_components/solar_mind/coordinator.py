@@ -11,6 +11,7 @@ import uuid
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import STATE_UNAVAILABLE, STATE_UNKNOWN
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.event import async_track_time_change
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .const import (
@@ -30,17 +31,16 @@ from .const import (
     CONF_REMOTECONTROL_TRIGGER,
     CONF_SOLAX_DEVICE_TYPE,
     CONF_STRATEGY_SELECTOR_ENTITY,
-    CONF_UPDATE_INTERVAL,
     CONF_WEATHER_ENTITY,
     DEFAULT_AUTOREPEAT_DURATION,
     DEFAULT_BATTERY_CAPACITY,
     DEFAULT_MAX_PV_POWER,
-    DEFAULT_UPDATE_INTERVAL,
     DOMAIN,
     PriceSource,
     SolaxDeviceType,
     StrategyKey,
 )
+from .ha.plan_adapter import create_plan_from_ha_data
 from .models import (
     AwayPeriod,
     EnergyPlan,
@@ -102,15 +102,87 @@ class SolarMindCoordinator(DataUpdateCoordinator[SolarMindData]):
         self._storage_path = Path(hass.config.path(".storage")) / f"{DOMAIN}_{entry.entry_id}.json"
         self._load_persisted_data()
         
-        # Get update interval from options
-        update_interval = entry.options.get(CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL)
-        
+        # Plan is updated twice per hour (every 30 min); Solax acts every hour
+        plan_update_minutes = 30
         super().__init__(
             hass,
             _LOGGER,
             name=DOMAIN,
-            update_interval=timedelta(minutes=update_interval),
+            update_interval=timedelta(minutes=plan_update_minutes),
         )
+        self._hourly_execution_unsub: Any = None
+    
+    def schedule_hourly_execution(self) -> None:
+        """Schedule Solax execution at the start of every hour based on plan."""
+        if self._hourly_execution_unsub is not None:
+            return
+        self._hourly_execution_unsub = async_track_time_change(
+            self.hass,
+            self._execute_plan_for_current_hour,
+            minute=0,
+            second=0,
+        )
+        _LOGGER.debug("Scheduled hourly plan execution at :00")
+    
+    def _plan_action_to_strategy_output(self, action: str) -> StrategyOutput:
+        """Map plan action (CHARGE/SELL/BATTERY_USE/GRID_USE) to StrategyOutput."""
+        from .const import (
+            SOLAX_MODE_BATTERY_CONTROL,
+            SOLAX_MODE_GRID_CONTROL,
+            SOLAX_MODE_NO_DISCHARGE,
+            SOLAX_MODE_SELF_USE,
+            SystemStatus,
+        )
+        max_charge = int(self.entry.options.get("max_charge_power", 3000))
+        max_discharge = int(self.entry.options.get("max_discharge_power", 3000))
+        if action == "CHARGE":
+            return StrategyOutput(
+                status=SystemStatus.CHARGING,
+                mode=SOLAX_MODE_GRID_CONTROL,
+                power_w=max_charge,
+                reason="Plan: charge",
+            )
+        if action == "SELL":
+            return StrategyOutput(
+                status=SystemStatus.DISCHARGING,
+                mode=SOLAX_MODE_BATTERY_CONTROL,
+                power_w=-max_discharge,
+                reason="Plan: sell",
+            )
+        if action == "BATTERY_USE":
+            return StrategyOutput(
+                status=SystemStatus.SELF_USE,
+                mode=SOLAX_MODE_SELF_USE,
+                reason="Plan: battery use",
+            )
+        if action == "GRID_USE":
+            return StrategyOutput(
+                status=SystemStatus.HOUSE_FROM_GRID,
+                mode=SOLAX_MODE_NO_DISCHARGE,
+                reason="Plan: grid use",
+            )
+        return StrategyOutput(
+            status=SystemStatus.IDLE,
+            mode=SOLAX_MODE_SELF_USE,
+            reason="Plan: unknown",
+        )
+    
+    async def _execute_plan_for_current_hour(self, now: datetime) -> None:
+        """Execute Solax action for the current hour from the plan (runs every hour at :00)."""
+        if not self.data or not self.data.plan_actions:
+            return
+        current_hour = now.replace(minute=0, second=0, microsecond=0)
+        action: str | None = None
+        for h, a in self.data.plan_actions:
+            if h == current_hour:
+                action = a
+                break
+        if action is None:
+            _LOGGER.debug("No plan action for hour %s", current_hour.isoformat())
+            return
+        _LOGGER.debug("Executing plan action for %s: %s", current_hour.isoformat(), action)
+        output = self._plan_action_to_strategy_output(action)
+        await self._execute_strategy(output)
     
     def _load_persisted_data(self) -> None:
         """Load persisted data from storage."""
@@ -520,6 +592,21 @@ class SolarMindCoordinator(DataUpdateCoordinator[SolarMindData]):
             
             # Update system health from Solax state
             await self._update_system_health(data)
+            
+            # Mind plan: SolarMind.create_plan (updated twice per hour)
+            data.plan_history = self._plan_history
+            data.user_preferences = self._user_preferences
+            now = datetime.now(timezone.utc)
+            start_hour = now.replace(minute=0, second=0, microsecond=0)
+            current_soc = data.solax_state.battery_soc or 50.0
+            horizon = 48 if data.prices.tomorrow_available else 24
+            data.plan_actions = create_plan_from_ha_data(
+                dict(self.entry.options),
+                data,
+                start_hour,
+                current_soc,
+                horizon_hours=horizon,
+            )
             
             # Determine active strategy
             data.active_strategy = await self._get_active_strategy()

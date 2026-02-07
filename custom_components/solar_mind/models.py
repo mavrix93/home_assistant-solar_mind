@@ -634,6 +634,8 @@ class SolarMindData:
     # Energy plan and history
     energy_plan: EnergyPlan | None = None
     plan_history: PlanHistory = field(default_factory=PlanHistory)
+    # Mind plan: output from SolarMind.create_plan (hour, action) for plan entity
+    plan_actions: list[tuple[datetime, str]] | None = None
     # System config for planning (from options)
     battery_capacity_wh: float = 10000.0
     max_pv_power_w: float = 10000.0

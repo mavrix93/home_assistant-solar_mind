@@ -369,8 +369,35 @@ def _get_estimated_daily_revenue(data: SolarMindData) -> float | None:
     return round(data.energy_plan.estimated_revenue, 2)
 
 
+def _get_plan_state(data: SolarMindData) -> str | None:
+    """Get current hour's planned action from SolarMind plan (CHARGE/SELL/BATTERY_USE/GRID_USE)."""
+    if not data.plan_actions:
+        return None
+    now = datetime.now(timezone.utc)
+    current_hour = now.replace(minute=0, second=0, microsecond=0)
+    for h, action in data.plan_actions:
+        if h == current_hour:
+            return action
+    return None
+
+
+def _get_plan_attrs(data: SolarMindData) -> dict[str, Any]:
+    """Get full plan schedule from SolarMind (hour -> action)."""
+    if not data.plan_actions:
+        return {}
+    now = datetime.now(timezone.utc)
+    schedule = [
+        {"hour": h.isoformat(), "action": action}
+        for h, action in data.plan_actions
+        if h >= now
+    ]
+    return {"schedule": schedule[:48], "horizon_hours": len(data.plan_actions)}
+
+
 def _get_current_hour_plan(data: SolarMindData) -> str | None:
-    """Get current hour's planned action."""
+    """Get current hour's planned action (legacy: from energy_plan if no plan_actions)."""
+    if data.plan_actions:
+        return _get_plan_state(data)
     if not data.energy_plan:
         return None
     now = datetime.now(timezone.utc)
@@ -831,6 +858,14 @@ def _get_price_attrs(data: SolarMindData) -> dict[str, Any]:
 
 
 SENSOR_DESCRIPTIONS: tuple[SolarMindSensorEntityDescription, ...] = (
+    # ============ PLAN ENTITY (SolarMind output) ============
+    SolarMindSensorEntityDescription(
+        key="plan",
+        name="Plan",
+        icon="mdi:calendar-clock",
+        value_fn=_get_plan_state,
+        attr_fn=_get_plan_attrs,
+    ),
     # ============ EXISTING SENSORS ============
     SolarMindSensorEntityDescription(
         key="status",
