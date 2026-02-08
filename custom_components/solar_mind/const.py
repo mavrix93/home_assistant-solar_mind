@@ -121,8 +121,18 @@ STRATEGY_DISPLAY_NAMES: Final[dict[str, str]] = {
 }
 
 # Solax remote control mode values
+# See: https://homeassistant-solax-modbus.readthedocs.io/en/latest/solax-mode1-modbus-power-control/
+#
+# Power semantics by mode:
+# - GRID_CONTROL: positive=import from grid, negative=export to grid
+# - BATTERY_CONTROL: positive=charge battery, negative=discharge battery
+# - POWER_CONTROL: direct power control (least common)
+# - SELF_USE: maximize self-consumption (no forced charging/discharging)
+# - NO_DISCHARGE: prevent battery discharge (grid only)
+# - FEEDIN_PRIORITY: force PV export priority
 SOLAX_MODE_GRID_CONTROL: Final = "Enabled Grid Control"
 SOLAX_MODE_BATTERY_CONTROL: Final = "Enabled Battery Control"
+SOLAX_MODE_POWER_CONTROL: Final = "Enabled Power Control"
 SOLAX_MODE_SELF_USE: Final = "Enabled Self Use"
 SOLAX_MODE_NO_DISCHARGE: Final = "Enabled No Discharge"
 SOLAX_MODE_FEEDIN_PRIORITY: Final = "Enabled Feedin Priority"

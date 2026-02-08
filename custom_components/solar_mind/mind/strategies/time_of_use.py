@@ -19,6 +19,7 @@ from ...const import (
     DEFAULT_MAX_DISCHARGE_POWER,
     DEFAULT_MAX_SOC,
     DEFAULT_MIN_SOC,
+    SOLAX_MODE_BATTERY_CONTROL,
     SOLAX_MODE_GRID_CONTROL,
     SOLAX_MODE_NO_DISCHARGE,
     SOLAX_MODE_SELF_USE,
@@ -114,7 +115,7 @@ class TimeOfUseStrategy(BaseStrategy):
             
             return StrategyOutput(
                 status=SystemStatus.CHARGING,
-                mode=SOLAX_MODE_GRID_CONTROL,
+                mode=SOLAX_MODE_BATTERY_CONTROL,
                 power_w=max_charge_power,
                 duration_seconds=autorepeat_duration,
                 reason=f"Charge window ({charge_start}:00-{charge_end}:00)",

@@ -190,12 +190,12 @@ class SpotPriceWeatherStrategy(BaseStrategy):
             
             return StrategyOutput(
                 status=SystemStatus.CHARGING,
-                mode=SOLAX_MODE_GRID_CONTROL,
+                mode=SOLAX_MODE_BATTERY_CONTROL,
                 power_w=max_charge_power,
                 duration_seconds=autorepeat_duration,
                 reason=f"Cheap price ({current_price:.3f} <= {charge_threshold:.3f}) in charge window",
             )
-        
+
         # Decision 2: Discharge to grid when price is expensive (if allowed)
         if price_is_expensive and discharge_allowed:
             if current_soc is not None and current_soc <= min_soc:
@@ -206,11 +206,11 @@ class SpotPriceWeatherStrategy(BaseStrategy):
                     duration_seconds=autorepeat_duration,
                     reason=f"Expensive price but battery low ({current_soc:.0f}% <= {min_soc:.0f}%)",
                 )
-            
+
             return StrategyOutput(
                 status=SystemStatus.DISCHARGING,
-                mode=SOLAX_MODE_BATTERY_CONTROL,
-                power_w=-max_discharge_power,  # Negative = discharge
+                mode=SOLAX_MODE_GRID_CONTROL,
+                power_w=-max_discharge_power,  # Negative = export in Grid Control mode
                 duration_seconds=autorepeat_duration,
                 reason=f"Expensive price ({current_price:.3f} >= {discharge_threshold:.3f}) - selling to grid",
             )
@@ -261,7 +261,7 @@ class SpotPriceWeatherStrategy(BaseStrategy):
             
             return StrategyOutput(
                 status=SystemStatus.CHARGING,
-                mode=SOLAX_MODE_GRID_CONTROL,
+                mode=SOLAX_MODE_BATTERY_CONTROL,
                 power_w=max_charge_power,
                 duration_seconds=autorepeat_duration,
                 reason=f"No price data - using charge window ({charge_start}:00-{charge_end}:00)",

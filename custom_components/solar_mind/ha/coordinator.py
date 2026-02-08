@@ -44,6 +44,7 @@ from custom_components.solar_mind.const import (
     SOLAX_MODE_BATTERY_CONTROL,
     SOLAX_MODE_GRID_CONTROL,
     SOLAX_MODE_NO_DISCHARGE,
+    SOLAX_MODE_POWER_CONTROL,
     SOLAX_MODE_SELF_USE,
     STRATEGY_DISPLAY_NAMES,
     PriceSource,
@@ -154,18 +155,22 @@ class SolarMindCoordinator(DataUpdateCoordinator[SolarMindData]):
         max_charge = int(self.entry.options.get("max_charge_power", 3000))
         max_discharge = int(self.entry.options.get("max_discharge_power", 3000))
         if action == "CHARGE":
+            # Charge from grid: use Battery Control mode with positive power
+            # positive=charge, negative=discharge in Battery Control mode
             return StrategyOutput(
                 status=SystemStatus.CHARGING,
-                mode=SOLAX_MODE_GRID_CONTROL,
+                mode=SOLAX_MODE_BATTERY_CONTROL,
                 power_w=max_charge,
-                reason="Plan: charge",
+                reason="Plan: charge from grid",
             )
         if action == "SELL":
+            # Discharge to grid: use Grid Control mode with negative power
+            # positive=import from grid, negative=export to grid in Grid Control mode
             return StrategyOutput(
                 status=SystemStatus.DISCHARGING,
-                mode=SOLAX_MODE_BATTERY_CONTROL,
+                mode=SOLAX_MODE_GRID_CONTROL,
                 power_w=-max_discharge,
-                reason="Plan: sell",
+                reason="Plan: discharge to grid",
             )
         if action == "BATTERY_USE":
             return StrategyOutput(
@@ -1180,10 +1185,10 @@ class SolarMindCoordinator(DataUpdateCoordinator[SolarMindData]):
     async def async_charge_from_grid(
         self, power_w: int | None = None, duration_seconds: int | None = None
     ) -> None:
-        
+        """Manually trigger charge from grid using Battery Control mode."""
         output = StrategyOutput(
             status=SystemStatus.CHARGING,
-            mode=SOLAX_MODE_GRID_CONTROL,
+            mode=SOLAX_MODE_BATTERY_CONTROL,
             power_w=power_w or self.entry.options.get("max_charge_power", 3000),
             duration_seconds=duration_seconds,
             reason="Manual charge from grid",
@@ -1193,13 +1198,11 @@ class SolarMindCoordinator(DataUpdateCoordinator[SolarMindData]):
     async def async_discharge_to_grid(
         self, power_w: int | None = None, duration_seconds: int | None = None
     ) -> None:
-        
-        """Manually trigger discharge to grid."""
-        
+        """Manually trigger discharge to grid using Grid Control mode."""
         power = -(power_w or self.entry.options.get("max_discharge_power", 3000))
         output = StrategyOutput(
             status=SystemStatus.DISCHARGING,
-            mode=SOLAX_MODE_BATTERY_CONTROL,
+            mode=SOLAX_MODE_GRID_CONTROL,
             power_w=power,
             duration_seconds=duration_seconds,
             reason="Manual discharge to grid",
