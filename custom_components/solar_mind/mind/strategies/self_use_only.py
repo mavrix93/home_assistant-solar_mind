@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from ..const import SOLAX_MODE_SELF_USE, SystemStatus
+from ...const import SOLAX_MODE_SELF_USE, SystemStatus
 from ..models import StrategyInput, StrategyOutput
 from .base import BaseStrategy
 

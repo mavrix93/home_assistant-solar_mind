@@ -9,13 +9,20 @@ from .types import (
     SolarMindConfig,
     Timeseries,
 )
+from .planner import EnergyPlanner, record_actual_hour
+from . import models
+from . import strategies
 
 __all__ = [
     "CloudCoverage",
     "Energy",
+    "EnergyPlanner",
     "PlanAction",
     "Price",
     "SolarMind",
     "SolarMindConfig",
     "Timeseries",
+    "models",
+    "record_actual_hour",
+    "strategies",
 ]

@@ -7,8 +7,8 @@ from typing import Any
 
 from homeassistant.core import HomeAssistant, State
 
-from .const import PriceSource
-from .models import HourlyPrice, PriceData
+from ..const import PriceSource
+from ..mind.models import HourlyPrice, PriceData
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -38,10 +38,9 @@ class PriceAdapter:
         """
         if self.source == PriceSource.CZECH_OTE:
             return self._parse_czech_ote(state)
-        elif self.source == PriceSource.NORD_POOL:
-            return self._parse_nord_pool(state)
         else:
-            return self._parse_generic(state)
+            raise NotImplementedError(f"Price source {self.source} not implemented")
+
 
     def _parse_czech_ote(self, state: State) -> PriceData:
         """Parse Czech OTE (cz_energy_spot_prices) data.
@@ -108,88 +107,6 @@ class PriceAdapter:
         
         return price_data
 
-    def _parse_nord_pool(self, state: State) -> PriceData:
-        """Parse Nord Pool data.
-        
-        The Nord Pool integration provides:
-        - State: current hour price
-        - Attributes: raw_today, raw_tomorrow (lists of {start, end, value})
-        """
-        price_data = PriceData()
-        attributes = state.attributes
-        
-        # Current price from state
-        try:
-            price_data.current_price = float(state.state)
-        except (ValueError, TypeError):
-            _LOGGER.warning("Could not parse current price from state: %s", state.state)
-        
-        # Parse raw_today
-        raw_today = attributes.get("raw_today", [])
-        if isinstance(raw_today, list):
-            for entry in raw_today:
-                try:
-                    start = entry.get("start")
-                    value = entry.get("value")
-                    
-                    if isinstance(start, str):
-                        start = datetime.fromisoformat(start.replace("Z", "+00:00"))
-                    
-                    if start and value is not None:
-                        price_data.today.append(HourlyPrice(start=start, price=float(value)))
-                except (ValueError, TypeError, AttributeError) as e:
-                    _LOGGER.debug("Could not parse raw_today entry: %s - %s", entry, e)
-        
-        # Parse raw_tomorrow
-        raw_tomorrow = attributes.get("raw_tomorrow", [])
-        tomorrow_valid = attributes.get("tomorrow_valid", False)
-        
-        if isinstance(raw_tomorrow, list) and (tomorrow_valid or raw_tomorrow):
-            for entry in raw_tomorrow:
-                try:
-                    start = entry.get("start")
-                    value = entry.get("value")
-                    
-                    if isinstance(start, str):
-                        start = datetime.fromisoformat(start.replace("Z", "+00:00"))
-                    
-                    if start and value is not None:
-                        price_data.tomorrow.append(HourlyPrice(start=start, price=float(value)))
-                        price_data.tomorrow_available = True
-                except (ValueError, TypeError, AttributeError) as e:
-                    _LOGGER.debug("Could not parse raw_tomorrow entry: %s - %s", entry, e)
-        
-        # Sort by time
-        price_data.today.sort(key=lambda x: x.start)
-        price_data.tomorrow.sort(key=lambda x: x.start)
-        
-        return price_data
-
-    def _parse_generic(self, state: State) -> PriceData:
-        """Parse generic price sensor data.
-        
-        Tries to detect the format automatically:
-        1. First tries raw_today/raw_tomorrow format (Nord Pool style)
-        2. Then tries timestamp -> price dict format (Czech OTE style)
-        3. Falls back to just using current state as price
-        """
-        price_data = PriceData()
-        attributes = state.attributes
-        
-        # Current price from state
-        try:
-            price_data.current_price = float(state.state)
-        except (ValueError, TypeError):
-            _LOGGER.warning("Could not parse current price from state: %s", state.state)
-        
-        # Try raw_today/raw_tomorrow format first
-        if "raw_today" in attributes:
-            return self._parse_nord_pool(state)
-        
-        # Try timestamp dict format
-        price_data = self._try_raw_format(state, price_data)
-        
-        return price_data
 
     def _try_raw_format(self, state: State, price_data: PriceData) -> PriceData:
         """Try to parse prices from timestamp -> price dictionary format."""

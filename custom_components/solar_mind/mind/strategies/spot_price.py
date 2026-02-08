@@ -3,7 +3,7 @@
 from datetime import datetime
 from typing import Any
 
-from ..const import (
+from ...const import (
     CONF_AUTOREPEAT_DURATION,
     CONF_CHARGE_PRICE_THRESHOLD,
     CONF_CHARGE_WINDOW_END,

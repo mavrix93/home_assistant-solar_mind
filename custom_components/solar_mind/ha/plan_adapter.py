@@ -32,7 +32,7 @@ from ..const import (
     DEFAULT_MIN_SOC,
 )
 from ..mind import PlanAction, SolarMind, SolarMindConfig, Timeseries
-from ..models import PriceData, SolarMindData, WeatherForecast
+from ..mind.models import PriceData, SolarMindData, WeatherForecast
 
 
 def _condition_to_cloud_coverage(condition: str) -> float:
@@ -166,13 +166,14 @@ def create_plan_from_ha_data(
     solar_mind = SolarMind(config)
 
     historical_load = build_historical_load_timeseries(data.plan_history)
-    weather_ts = build_weather_timeseries(data.weather, start_time, horizon_hours)
     prices_ts = build_prices_timeseries(data.prices, start_time, horizon_hours)
     out_of_home_ts = build_out_of_home_timeseries(data.user_preferences, start_time, horizon_hours)
 
+    generation_forecast = data.generation_forecast if data.generation_forecast is not None else Timeseries(points=[])
+
     plan = solar_mind.create_plan(
         historical_load_data=historical_load,
-        weather_prediction=weather_ts,
+        generation_forecast=generation_forecast,
         spot_prices=prices_ts,
         out_of_home_schedule=out_of_home_ts,
         start_time=start_time,

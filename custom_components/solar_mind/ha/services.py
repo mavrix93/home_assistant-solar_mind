@@ -9,8 +9,8 @@ import voluptuous as vol
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.helpers import config_validation as cv
 
-from .const import DOMAIN
-from .coordinator import SolarMindCoordinator
+from custom_components.solar_mind.const import DOMAIN
+from custom_components.solar_mind.ha.coordinator import SolarMindCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 

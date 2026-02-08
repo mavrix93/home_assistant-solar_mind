@@ -7,11 +7,9 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 
-from .const import DOMAIN
-from .coordinator import SolarMindCoordinator
-
-if TYPE_CHECKING:
-    from homeassistant.helpers.typing import ConfigType
+from custom_components.solar_mind.const import DOMAIN
+from custom_components.solar_mind.ha.coordinator import SolarMindCoordinator
+from homeassistant.helpers.typing import ConfigType
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -68,6 +66,6 @@ async def async_update_options(hass: HomeAssistant, entry: ConfigEntry) -> None:
 
 async def async_setup_services(hass: HomeAssistant) -> None:
     """Set up Solar Mind services."""
-    from .services import async_setup_services as setup_services
+    from .ha.services import async_setup_services as setup_services
 
     await setup_services(hass)

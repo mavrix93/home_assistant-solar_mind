@@ -5,7 +5,8 @@ from datetime import datetime, timedelta, timezone
 from enum import Enum
 from typing import Any
 
-from .const import StrategyKey, SystemStatus
+from ..const import StrategyKey, SystemStatus
+from .types import Energy, Timeseries
 
 
 class PlannedAction(str, Enum):
@@ -644,3 +645,5 @@ class SolarMindData:
     user_preferences: UserPreferences = field(default_factory=UserPreferences)
     system_health: SystemHealth = field(default_factory=SystemHealth)
     milestones: list[Milestone] = field(default_factory=list)
+    # Generation forecast from forecast.solar API (hourly Wh)
+    generation_forecast: Timeseries[Energy] | None = None

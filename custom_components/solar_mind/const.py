@@ -52,6 +52,8 @@ CONF_BATTERY_CAPACITY: Final = "battery_capacity"
 CONF_MAX_PV_POWER: Final = "max_pv_power"
 CONF_AVERAGE_HOUSE_LOAD: Final = "average_house_load"
 CONF_BATTERY_EFFICIENCY: Final = "battery_efficiency"
+CONF_PV_AZIMUTH: Final = "pv_azimuth"
+CONF_PV_TILT: Final = "pv_tilt"
 
 # Default values
 DEFAULT_CHARGE_PRICE_THRESHOLD: Final = 0.05  # EUR/kWh or CZK/kWh
@@ -71,6 +73,8 @@ DEFAULT_BATTERY_CAPACITY: Final = 14400  # Wh
 DEFAULT_MAX_PV_POWER: Final = 10000  # W (10 kW peak)
 DEFAULT_AVERAGE_HOUSE_LOAD: Final = 500  # W average
 DEFAULT_BATTERY_EFFICIENCY: Final = 0.90  # 90% round-trip efficiency
+DEFAULT_PV_AZIMUTH: Final = 180  # South-facing
+DEFAULT_PV_TILT: Final = 30  # 30-degree tilt
 
 
 class PriceSource(StrEnum):

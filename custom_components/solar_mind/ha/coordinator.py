@@ -3,6 +3,7 @@
 import asyncio
 import json
 import logging
+import zoneinfo
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
@@ -14,7 +15,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.event import async_track_time_change
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .const import (
+from custom_components.solar_mind.const import (
     CONF_AUTOREPEAT_DURATION,
     CONF_BATTERY_CAPACITY,
     CONF_BATTERY_SOC,
@@ -25,6 +26,8 @@ from .const import (
     CONF_PASSIVE_UPDATE_TRIGGER,
     CONF_PRICE_SENSOR,
     CONF_PRICE_SOURCE,
+    CONF_PV_AZIMUTH,
+    CONF_PV_TILT,
     CONF_REMOTECONTROL_ACTIVE_POWER,
     CONF_REMOTECONTROL_AUTOREPEAT_DURATION,
     CONF_REMOTECONTROL_POWER_CONTROL,
@@ -35,13 +38,21 @@ from .const import (
     DEFAULT_AUTOREPEAT_DURATION,
     DEFAULT_BATTERY_CAPACITY,
     DEFAULT_MAX_PV_POWER,
+    DEFAULT_PV_AZIMUTH,
+    DEFAULT_PV_TILT,
     DOMAIN,
+    SOLAX_MODE_BATTERY_CONTROL,
+    SOLAX_MODE_GRID_CONTROL,
+    SOLAX_MODE_NO_DISCHARGE,
+    SOLAX_MODE_SELF_USE,
+    STRATEGY_DISPLAY_NAMES,
     PriceSource,
     SolaxDeviceType,
     StrategyKey,
+    SystemStatus,
 )
-from .ha.plan_adapter import create_plan_from_ha_data
-from .models import (
+from custom_components.solar_mind.ha.plan_adapter import create_plan_from_ha_data
+from custom_components.solar_mind.mind.models import (
     AwayPeriod,
     EnergyPlan,
     EventLog,
@@ -60,9 +71,11 @@ from .models import (
     UserPreferences,
     WeatherForecast,
 )
-from .planner import EnergyPlanner, record_actual_hour
-from .price_adapter import create_price_adapter
-from .strategies import get_strategy
+from custom_components.solar_mind.mind.generation_forecast import ForecastSolarApiGenerationForecast
+from custom_components.solar_mind.mind.planner import EnergyPlanner, record_actual_hour
+from custom_components.solar_mind.mind.types import Energy, Timeseries
+from custom_components.solar_mind.ha.price_adapter import create_price_adapter
+from custom_components.solar_mind.mind.strategies import get_strategy
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -98,6 +111,18 @@ class SolarMindCoordinator(DataUpdateCoordinator[SolarMindData]):
         self._daily_mode_changes: int = 0
         self._last_reset_date: datetime | None = None
         
+        # Initialize generation forecast client (forecast.solar API)
+        azimuth = float(entry.options.get(CONF_PV_AZIMUTH, DEFAULT_PV_AZIMUTH))
+        tilt = float(entry.options.get(CONF_PV_TILT, DEFAULT_PV_TILT))
+        max_peak_power_kw = float(entry.options.get(CONF_MAX_PV_POWER, DEFAULT_MAX_PV_POWER)) / 1000.0
+        self._generation_forecast_client = ForecastSolarApiGenerationForecast(
+            latitude=hass.config.latitude,
+            longitude=hass.config.longitude,
+            azimuth=azimuth,
+            tilt=tilt,
+            max_peak_power_kw=max_peak_power_kw,
+        )
+
         # Load persisted data
         self._storage_path = Path(hass.config.path(".storage")) / f"{DOMAIN}_{entry.entry_id}.json"
         self._load_persisted_data()
@@ -126,13 +151,6 @@ class SolarMindCoordinator(DataUpdateCoordinator[SolarMindData]):
     
     def _plan_action_to_strategy_output(self, action: str) -> StrategyOutput:
         """Map plan action (CHARGE/SELL/BATTERY_USE/GRID_USE) to StrategyOutput."""
-        from .const import (
-            SOLAX_MODE_BATTERY_CONTROL,
-            SOLAX_MODE_GRID_CONTROL,
-            SOLAX_MODE_NO_DISCHARGE,
-            SOLAX_MODE_SELF_USE,
-            SystemStatus,
-        )
         max_charge = int(self.entry.options.get("max_charge_power", 3000))
         max_discharge = int(self.entry.options.get("max_discharge_power", 3000))
         if action == "CHARGE":
@@ -575,6 +593,26 @@ class SolarMindCoordinator(DataUpdateCoordinator[SolarMindData]):
             self.entry.data.get(CONF_SOLAX_DEVICE_TYPE, SolaxDeviceType.MODBUS_REMOTE)
         )
 
+    async def _fetch_generation_forecast(self) -> Timeseries[Energy] | None:
+        """Fetch PV generation forecast from forecast.solar API."""
+        try:
+            forecast = await self.hass.async_add_executor_job(
+                self._generation_forecast_client.get_generation_forecast
+            )
+            if forecast is None:
+                return None
+            # Convert naive local timestamps to UTC-aware datetimes
+            local_tz = zoneinfo.ZoneInfo(self.hass.config.time_zone)
+            utc_points: list[tuple[datetime, float]] = []
+            for dt, value in forecast.points:
+                local_aware = dt.replace(tzinfo=local_tz)
+                utc_dt = local_aware.astimezone(timezone.utc)
+                utc_points.append((utc_dt, value))
+            return Timeseries(points=utc_points)
+        except Exception as e:
+            _LOGGER.warning("Failed to fetch generation forecast: %s", e)
+            return None
+
     async def _async_update_data(self) -> SolarMindData:
         """Fetch data and run strategy."""
         try:
@@ -592,7 +630,10 @@ class SolarMindCoordinator(DataUpdateCoordinator[SolarMindData]):
             
             # Update system health from Solax state
             await self._update_system_health(data)
-            
+
+            # Fetch generation forecast from forecast.solar API
+            data.generation_forecast = await self._fetch_generation_forecast()
+
             # Mind plan: SolarMind.create_plan (updated twice per hour)
             data.plan_history = self._plan_history
             data.user_preferences = self._user_preferences
@@ -645,6 +686,7 @@ class SolarMindCoordinator(DataUpdateCoordinator[SolarMindData]):
             )
             
             data.last_error = None
+            print("XXX", data)
             return data
             
         except Exception as err:
@@ -996,7 +1038,7 @@ class SolarMindCoordinator(DataUpdateCoordinator[SolarMindData]):
                     return StrategyKey(strategy_state)
                 except ValueError:
                     # State doesn't match any strategy key, try display name matching
-                    from .const import STRATEGY_DISPLAY_NAMES
+
                     for key, display_name in STRATEGY_DISPLAY_NAMES.items():
                         if state.state.lower() == display_name.lower():
                             return StrategyKey(key)
@@ -1027,7 +1069,7 @@ class SolarMindCoordinator(DataUpdateCoordinator[SolarMindData]):
             
         except Exception as e:
             _LOGGER.error("Strategy execution failed: %s", e)
-            from .const import SOLAX_MODE_SELF_USE, SystemStatus
+
             return StrategyOutput(
                 status=SystemStatus.ERROR,
                 mode=SOLAX_MODE_SELF_USE,
@@ -1036,7 +1078,7 @@ class SolarMindCoordinator(DataUpdateCoordinator[SolarMindData]):
 
     async def _execute_strategy(self, output: StrategyOutput) -> None:
         """Execute strategy output by calling Solax entities."""
-        from .const import SystemStatus
+
         
         # Don't execute if in error or idle state
         if output.status in (SystemStatus.ERROR, SystemStatus.IDLE):
@@ -1138,8 +1180,6 @@ class SolarMindCoordinator(DataUpdateCoordinator[SolarMindData]):
     async def async_charge_from_grid(
         self, power_w: int | None = None, duration_seconds: int | None = None
     ) -> None:
-        """Manually trigger charge from grid."""
-        from .const import SOLAX_MODE_GRID_CONTROL, SystemStatus
         
         output = StrategyOutput(
             status=SystemStatus.CHARGING,
@@ -1153,8 +1193,8 @@ class SolarMindCoordinator(DataUpdateCoordinator[SolarMindData]):
     async def async_discharge_to_grid(
         self, power_w: int | None = None, duration_seconds: int | None = None
     ) -> None:
+        
         """Manually trigger discharge to grid."""
-        from .const import SOLAX_MODE_BATTERY_CONTROL, SystemStatus
         
         power = -(power_w or self.entry.options.get("max_discharge_power", 3000))
         output = StrategyOutput(
@@ -1168,7 +1208,6 @@ class SolarMindCoordinator(DataUpdateCoordinator[SolarMindData]):
 
     async def async_set_self_use(self) -> None:
         """Manually set self-use mode."""
-        from .const import SOLAX_MODE_SELF_USE, SystemStatus
         
         output = StrategyOutput(
             status=SystemStatus.SELF_USE,
@@ -1179,7 +1218,6 @@ class SolarMindCoordinator(DataUpdateCoordinator[SolarMindData]):
 
     async def async_set_house_from_grid(self) -> None:
         """Manually set house-from-grid mode (no discharge)."""
-        from .const import SOLAX_MODE_NO_DISCHARGE, SystemStatus
         
         output = StrategyOutput(
             status=SystemStatus.HOUSE_FROM_GRID,

@@ -10,7 +10,7 @@ from .spot_price import SpotPriceWeatherStrategy
 from .time_of_use import TimeOfUseStrategy
 
 if TYPE_CHECKING:
-    from ..const import StrategyKey
+    from ...const import StrategyKey
 
 # Strategy registry: maps strategy key to strategy class
 STRATEGIES: dict[str, type[BaseStrategy]] = {

@@ -19,8 +19,8 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN, STRATEGY_DISPLAY_NAMES, SystemStatus
-from .coordinator import SolarMindCoordinator
-from .models import PlannedAction, SolarMindData
+from .ha.coordinator import SolarMindCoordinator
+from .mind.models import PlannedAction, SolarMindData
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -151,6 +151,46 @@ def _get_next_action(data: SolarMindData) -> str | None:
 def _get_battery_soc(data: SolarMindData) -> float | None:
     """Get battery SOC from last read."""
     return data.solax_state.battery_soc
+
+
+# ============ GENERATION FORECAST SENSOR (forecast.solar) ============
+
+
+def _get_generation_forecast_current(data: SolarMindData) -> float | None:
+    """Get predicted PV generation Wh for the current hour from forecast.solar."""
+    if not data.generation_forecast:
+        return None
+    now = datetime.now(timezone.utc)
+    value = data.generation_forecast.get_at(now)
+    return round(value, 1) if value is not None else 0.0
+
+
+def _get_generation_forecast_attrs(data: SolarMindData) -> dict[str, Any]:
+    """Get full generation forecast timeseries as attributes."""
+    if not data.generation_forecast:
+        return {}
+    now = datetime.now(timezone.utc)
+    hourly = []
+    total_today_wh = 0.0
+    total_tomorrow_wh = 0.0
+    tomorrow = now.date() + timedelta(days=1)
+    for dt, wh in data.generation_forecast.points:
+        hourly.append({
+            "hour": dt.isoformat(),
+            "wh": round(wh, 1),
+        })
+        if dt.date() == now.date():
+            total_today_wh += wh
+        elif dt.date() == tomorrow:
+            total_tomorrow_wh += wh
+    return {
+        "hourly_forecast": hourly,
+        "total_today_wh": round(total_today_wh, 1),
+        "total_today_kwh": round(total_today_wh / 1000, 2),
+        "total_tomorrow_wh": round(total_tomorrow_wh, 1),
+        "total_tomorrow_kwh": round(total_tomorrow_wh / 1000, 2),
+        "source": "forecast.solar",
+    }
 
 
 # ============ NEW FORECAST/PLAN SENSORS ============
@@ -946,6 +986,17 @@ SENSOR_DESCRIPTIONS: tuple[SolarMindSensorEntityDescription, ...] = (
         icon="mdi:alert-circle-outline",
         entity_registry_enabled_default=False,
         value_fn=_get_last_error,
+    ),
+    # ============ GENERATION FORECAST (forecast.solar) ============
+    SolarMindSensorEntityDescription(
+        key="generation_forecast",
+        name="PV Generation Forecast",
+        icon="mdi:solar-power",
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=None,  # Forecast: avoid history-stats
+        native_unit_of_measurement="Wh",
+        value_fn=_get_generation_forecast_current,
+        attr_fn=_get_generation_forecast_attrs,
     ),
     # ============ NEW FORECAST/PLAN SENSORS ============
     SolarMindSensorEntityDescription(

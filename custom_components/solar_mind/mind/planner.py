@@ -5,7 +5,7 @@ import math
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from .const import (
+from ..const import (
     CONF_AVERAGE_HOUSE_LOAD,
     CONF_BATTERY_CAPACITY,
     CONF_BATTERY_EFFICIENCY,

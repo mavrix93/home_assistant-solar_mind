@@ -1,10 +1,8 @@
-"""Solar Mind – creates hourly plan from load, weather, prices, and away schedule."""
+"""Solar Mind – creates hourly plan from load, generation forecast, prices, and away schedule."""
 
-import math
 from datetime import datetime, timedelta
 
 from .types import (
-    CloudCoverage,
     Energy,
     PlanAction,
     Price,
@@ -36,7 +34,7 @@ class SolarMind:
     def create_plan(
         self,
         historical_load_data: Timeseries[Energy],
-        weather_prediction: Timeseries[CloudCoverage],
+        generation_forecast: Timeseries[Energy],
         spot_prices: Timeseries[Price],
         out_of_home_schedule: Timeseries[bool],
         start_time: datetime,
@@ -48,6 +46,7 @@ class SolarMind:
 
         Returns a timeseries of PlanAction: CHARGE, SELL, BATTERY_USE, GRID_USE.
         """
+        print("Creating plan...")
         cfg = self.config
         start_hour = start_time.replace(minute=0, second=0, microsecond=0)
         simulated_soc = max(cfg.min_soc, min(cfg.max_soc, current_soc))
@@ -85,15 +84,8 @@ class SolarMind:
             return base
 
         def pv_wh(hour: datetime) -> float:
-            hod = hour.hour
-            if hod < 6 or hod > 20:
-                return 0.0
-            solar_potential = weather_prediction.get_at(hour)
-            if solar_potential is None:
-                solar_potential = 0.5
-            solar_noon = 12.5
-            angle_factor = max(0, math.cos(abs(hod - solar_noon) * math.pi / 14))
-            return cfg.max_pv_power_w * angle_factor * solar_potential
+            value = generation_forecast.get_at(hour)
+            return value if value is not None else 0.0
 
         def in_charge_window(hour: int) -> bool:
             s, e = cfg.charge_window_start, cfg.charge_window_end

@@ -7,8 +7,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from custom_components.solar_mind.const import PriceSource
-from custom_components.solar_mind.models import PriceData
-from custom_components.solar_mind.price_adapter import PriceAdapter, create_price_adapter
+from custom_components.solar_mind.ha.price_adapter import PriceAdapter, create_price_adapter
 
 
 def _make_state(state: str, attributes: dict | None = None) -> MagicMock:
@@ -19,41 +18,6 @@ def _make_state(state: str, attributes: dict | None = None) -> MagicMock:
     return s
 
 
-class TestPriceAdapterNordPool:
-    """Test price adapter with Nord Pool format."""
-
-    def test_parse_nord_pool_raw_today(self) -> None:
-        """Nord Pool raw_today/raw_tomorrow are parsed."""
-        hass = MagicMock()
-        adapter = PriceAdapter(hass, PriceSource.NORD_POOL)
-        today = datetime(2025, 2, 1, 0, 0, 0)
-        state = _make_state(
-            "0.05",
-            {
-                "raw_today": [
-                    {"start": today.isoformat(), "value": 0.03},
-                    {"start": (today.replace(hour=1)).isoformat(), "value": 0.04},
-                ],
-                "raw_tomorrow": [],
-                "tomorrow_valid": False,
-            },
-        )
-        result = adapter.parse_price_data(state)
-        assert result.current_price == 0.05
-        assert len(result.today) == 2
-        assert result.today[0].price == 0.03
-        assert result.today[1].price == 0.04
-        assert result.tomorrow_available is False
-
-    def test_parse_nord_pool_empty_state(self) -> None:
-        """Nord Pool with empty attributes returns current price only."""
-        hass = MagicMock()
-        adapter = PriceAdapter(hass, PriceSource.NORD_POOL)
-        state = _make_state("0.12", {})
-        result = adapter.parse_price_data(state)
-        assert result.current_price == 0.12
-        assert len(result.today) == 0
-        assert len(result.tomorrow) == 0
 
 
 class TestPriceAdapterCzechOte:
@@ -74,18 +38,6 @@ class TestPriceAdapterCzechOte:
         state = _make_state("unknown", {})
         result = adapter.parse_price_data(state)
         assert result.current_price is None
-
-
-class TestPriceAdapterGeneric:
-    """Test price adapter generic/fallback."""
-
-    def test_parse_generic_uses_state(self) -> None:
-        """Generic uses state as current price."""
-        hass = MagicMock()
-        adapter = PriceAdapter(hass, PriceSource.GENERIC)
-        state = _make_state("0.08", {})
-        result = adapter.parse_price_data(state)
-        assert result.current_price == 0.08
 
 
 class TestCreatePriceAdapter:
