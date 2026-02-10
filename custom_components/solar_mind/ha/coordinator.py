@@ -74,6 +74,8 @@ class SolarMindCoordinator(DataUpdateCoordinator[SolarMindData]):
             update_interval=timedelta(minutes=plan_update_minutes),
         )
         self._hourly_execution_unsub: Any = None
+
+        self._last_generation_forecast: Timeseries[Energy] | None = None
     
     def schedule_hourly_execution(self) -> None:
         """Schedule Solax execution at the start of every hour based on plan."""
@@ -121,10 +123,11 @@ class SolarMindCoordinator(DataUpdateCoordinator[SolarMindData]):
                 local_aware = dt.replace(tzinfo=local_tz)
                 utc_dt = local_aware.astimezone(timezone.utc)
                 utc_points.append((utc_dt, value))
-            return Timeseries(points=utc_points)
+            self._last_generation_forecast = Timeseries(points=utc_points)
+            return self._last_generation_forecast
         except Exception as e:
             _LOGGER.warning("Failed to fetch generation forecast: %s", e)
-            return None
+            return self._last_generation_forecast
 
     async def _async_update_data(self) -> SolarMindData:
         """Fetch data and run strategy."""

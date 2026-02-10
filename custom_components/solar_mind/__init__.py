@@ -13,7 +13,7 @@ from custom_components.solar_mind.ha.coordinator import SolarMindCoordinator
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
-PLATFORMS: Final[list[Platform]] = [Platform.SENSOR, Platform.BUTTON]
+PLATFORMS: Final[list[Platform]] = [Platform.SENSOR, Platform.BUTTON, Platform.CALENDAR]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
