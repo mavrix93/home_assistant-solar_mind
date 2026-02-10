@@ -25,22 +25,15 @@ from .const import (
     CONF_REMOTECONTROL_ACTIVE_POWER,
     CONF_REMOTECONTROL_POWER_CONTROL,
     CONF_REMOTECONTROL_TRIGGER,
-    DEFAULT_MAX_PV_POWER,
-    DEFAULT_PV_AZIMUTH,
-    DEFAULT_PV_TILT,
     DOMAIN,
-    SOLAX_MODE_BATTERY_CONTROL,
-    SOLAX_MODE_GRID_CONTROL,
-    SOLAX_MODE_NO_DISCHARGE,
-    SOLAX_MODE_SELF_USE,
-    PriceSource,
+    StrategyOutput,
     SystemStatus,
 )
 
 from ..mind.models import (
     PriceData,
     SolarMindData,
-    StrategyOutput,
+    
 )
 from ..mind.generation_forecast import ForecastSolarApiGenerationForecast
 
@@ -61,9 +54,9 @@ class SolarMindCoordinator(DataUpdateCoordinator[SolarMindData]):
         
         # Initialize generation forecast client (forecast.solar API)
         # Use defaults if not configured in options
-        azimuth = float(entry.options.get(CONF_PV_AZIMUTH, DEFAULT_PV_AZIMUTH))
-        tilt = float(entry.options.get(CONF_PV_TILT, DEFAULT_PV_TILT))
-        max_peak_power_kw = float(entry.options.get(CONF_MAX_PV_POWER, DEFAULT_MAX_PV_POWER)) / 1000.0
+        azimuth = float(entry.options[CONF_PV_AZIMUTH])
+        tilt = float(entry.options[CONF_PV_TILT])
+        max_peak_power_kw = float(entry.options[CONF_MAX_PV_POWER]) / 1000.0
         self._generation_forecast_client = ForecastSolarApiGenerationForecast(
             latitude=hass.config.latitude,
             longitude=hass.config.longitude,
@@ -280,7 +273,7 @@ class SolarMindCoordinator(DataUpdateCoordinator[SolarMindData]):
         """Manually trigger charge from grid using Battery Control mode."""
         output = StrategyOutput(
             status=SystemStatus.CHARGING,
-            mode=SOLAX_MODE_BATTERY_CONTROL,
+            mode="SOLAX_MODE_BATTERY_CONTROL",
             power_w=power_w or self.entry.options.get("max_charge_power", 3000),
             duration_seconds=duration_seconds,
             reason="Manual charge from grid",
@@ -294,7 +287,7 @@ class SolarMindCoordinator(DataUpdateCoordinator[SolarMindData]):
         power = -(power_w or self.entry.options.get("max_discharge_power", 3000))
         output = StrategyOutput(
             status=SystemStatus.DISCHARGING,
-            mode=SOLAX_MODE_GRID_CONTROL,
+            mode="SOLAX_MODE_GRID_CONTROL",
             power_w=power,
             duration_seconds=duration_seconds,
             reason="Manual discharge to grid",
@@ -306,7 +299,7 @@ class SolarMindCoordinator(DataUpdateCoordinator[SolarMindData]):
         
         output = StrategyOutput(
             status=SystemStatus.SELF_USE,
-            mode=SOLAX_MODE_SELF_USE,
+            mode="SOLAX_MODE_SELF_USE",
             reason="Manual self-use mode",
         )
         await self._execute_strategy(output)
@@ -316,7 +309,7 @@ class SolarMindCoordinator(DataUpdateCoordinator[SolarMindData]):
         
         output = StrategyOutput(
             status=SystemStatus.HOUSE_FROM_GRID,
-            mode=SOLAX_MODE_NO_DISCHARGE,
+            mode="SOLAX_MODE_NO_DISCHARGE",
             reason="Manual house from grid (no discharge)",
         )
         await self._execute_strategy(output)

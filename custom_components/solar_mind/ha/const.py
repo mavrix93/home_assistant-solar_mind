@@ -1,3 +1,5 @@
+from dataclasses import dataclass
+from enum import StrEnum
 from typing import Final
 
 
@@ -16,3 +18,52 @@ CONF_PRICE_SOURCE: Final = "price_source"
 CONF_REMOTECONTROL_POWER_CONTROL: Final = "remotecontrol_power_control"
 CONF_REMOTECONTROL_ACTIVE_POWER: Final = "remotecontrol_active_power"
 CONF_REMOTECONTROL_TRIGGER: Final = "remotecontrol_trigger"
+
+# Solax entity config keys
+CONF_SOLAX_DEVICE_TYPE: Final = "solax_device_type"
+CONF_ENERGY_STORAGE_MODE: Final = "energy_storage_mode"
+CONF_REMOTECONTROL_POWER_CONTROL: Final = "remotecontrol_power_control"
+CONF_REMOTECONTROL_ACTIVE_POWER: Final = "remotecontrol_active_power"
+CONF_REMOTECONTROL_TRIGGER: Final = "remotecontrol_trigger"
+CONF_REMOTECONTROL_AUTOREPEAT_DURATION: Final = "remotecontrol_autorepeat_duration"
+CONF_BATTERY_SOC: Final = "battery_soc"
+
+
+class SystemStatus(StrEnum):
+    """System status values."""
+
+    CHARGING = "charging"
+    DISCHARGING = "discharging"
+    SELF_USE = "self_use"
+    HOUSE_FROM_GRID = "house_from_grid"
+    IDLE = "idle"
+    ERROR = "error"
+
+@dataclass
+class StrategyOutput:
+    """Output from strategy computation."""
+
+    status: SystemStatus
+    mode: str  # Solax mode to set (e.g., "Enabled Grid Control")
+    power_w: int | None = None  # Target power in watts (positive=charge, negative=discharge)
+    duration_seconds: int | None = None  # Duration for autorepeat
+    reason: str = ""  # Human-readable explanation
+
+    @property
+    def recommended_action(self) -> str:
+        """Get human-readable recommended action."""
+        if self.status == SystemStatus.CHARGING:
+            power_str = f" at {self.power_w}W" if self.power_w else ""
+            return f"Charge from grid{power_str}"
+        elif self.status == SystemStatus.DISCHARGING:
+            power_str = f" at {abs(self.power_w or 0)}W" if self.power_w else ""
+            return f"Discharge to grid{power_str}"
+        elif self.status == SystemStatus.SELF_USE:
+            return "Self use (battery for house)"
+        elif self.status == SystemStatus.HOUSE_FROM_GRID:
+            return "House from grid (no discharge)"
+        elif self.status == SystemStatus.IDLE:
+            return "Idle"
+        elif self.status == SystemStatus.ERROR:
+            return f"Error: {self.reason}"
+        return "Unknown"
