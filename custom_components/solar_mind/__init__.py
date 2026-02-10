@@ -13,7 +13,7 @@ from custom_components.solar_mind.ha.coordinator import SolarMindCoordinator
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
-PLATFORMS: Final[list[Platform]] = [Platform.SENSOR]
+PLATFORMS: Final[list[Platform]] = [Platform.SENSOR, Platform.BUTTON]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -27,6 +27,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
+    await async_setup_services(hass)
+
     return True
 
 
@@ -38,3 +40,15 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         hass.data[DOMAIN].pop(entry.entry_id)
 
     return unload_ok
+
+async def async_update_options(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Handle options update."""
+    _LOGGER.debug("Options updated for Solar Mind: %s", entry.entry_id)
+    await hass.config_entries.async_reload(entry.entry_id)
+    
+
+async def async_setup_services(hass: HomeAssistant) -> None:
+    """Set up Solar Mind services."""
+    from .ha.services import async_setup_services as setup_services
+
+    await setup_services(hass)

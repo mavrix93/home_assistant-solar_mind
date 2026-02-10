@@ -19,8 +19,9 @@ SERVICE_CHARGE_FROM_GRID = "charge_battery_from_grid"
 SERVICE_DISCHARGE_TO_GRID = "discharge_battery_to_grid"
 SERVICE_SET_SELF_USE = "set_self_use"
 SERVICE_SET_HOUSE_FROM_GRID = "set_house_use_grid"
-SERVICE_APPLY_STRATEGY = "apply_strategy"
+
 SERVICE_SET_BATTERY_FOR_HOUSE = "set_battery_for_house"
+SERVICE_APPLY_STRATEGY = "apply_strategy"
 # Service schemas
 SCHEMA_CHARGE = vol.Schema(
     {
@@ -181,4 +182,3 @@ async def async_setup_services(hass: HomeAssistant) -> None:
             handle_apply_strategy,
             schema=SCHEMA_EMPTY,
         )
-

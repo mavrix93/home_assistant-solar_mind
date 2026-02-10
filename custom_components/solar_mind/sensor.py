@@ -31,7 +31,6 @@ def _get_current_price(data: SolarMindData) -> float | None:
     return data.prices.current_price
 
 
-
 def _get_last_update(data: SolarMindData) -> datetime | None:
     """Get last update time."""
     return data.last_update
@@ -158,6 +157,7 @@ def _get_price_attrs(data: SolarMindData) -> dict[str, Any]:
     attrs: dict[str, Any] = {
         "tomorrow_available": data.prices.tomorrow_available,
     }
+    attrs["hourly_prices"] = [{"hour": p.start.hour, "price": p.price} for p in data.prices.today]
     
     if data.prices.today:
         prices_today = sorted(data.prices.today, key=lambda x: x.price)
