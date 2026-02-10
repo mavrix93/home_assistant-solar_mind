@@ -9,6 +9,7 @@ from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 
 from custom_components.solar_mind.ha.const import DOMAIN
+from custom_components.solar_mind.ha.coordinator import SolarMindCoordinator
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -18,7 +19,11 @@ PLATFORMS: Final[list[Platform]] = [Platform.SENSOR]
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Solar Mind from a config entry."""
     hass.data.setdefault(DOMAIN, {})
-    hass.data[DOMAIN][entry.entry_id] = {}
+
+    coordinator = SolarMindCoordinator(hass, entry)
+    await coordinator.async_config_entry_first_refresh()
+
+    hass.data[DOMAIN][entry.entry_id] = coordinator
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 

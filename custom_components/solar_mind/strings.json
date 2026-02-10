@@ -13,6 +13,20 @@
           "solax_device_type": "Select how your Solax inverter is controlled"
         }
       },
+      "pv_system": {
+        "title": "PV System Configuration",
+        "description": "Configure your solar PV panel parameters for generation forecasting.",
+        "data": {
+          "pv_azimuth": "Panel Azimuth",
+          "pv_tilt": "Panel Tilt",
+          "max_pv_power": "Max PV Power"
+        },
+        "data_description": {
+          "pv_azimuth": "Azimuth angle of your solar panels (-180 to 180, 0=North, 180=South)",
+          "pv_tilt": "Tilt angle of your solar panels (0=horizontal, 90=vertical)",
+          "max_pv_power": "Maximum peak power output of your PV system in Watts"
+        }
+      },
       "solax": {
         "title": "Solax Entity Configuration",
         "description": "Select the Solax entities for {device_type}",

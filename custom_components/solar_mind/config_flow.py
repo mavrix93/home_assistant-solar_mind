@@ -12,10 +12,56 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers import selector
 
-from custom_components.solar_mind.ha.const import CONF_BATTERY_SOC, CONF_ENERGY_STORAGE_MODE, CONF_REMOTECONTROL_ACTIVE_POWER, CONF_REMOTECONTROL_AUTOREPEAT_DURATION, CONF_REMOTECONTROL_POWER_CONTROL, CONF_REMOTECONTROL_TRIGGER, DOMAIN
+from custom_components.solar_mind.ha.const import (
+    CONF_BATTERY_SOC,
+    CONF_ENERGY_STORAGE_MODE,
+    CONF_MAX_PV_POWER,
+    CONF_PRICE_SENSOR,
+    CONF_PV_AZIMUTH,
+    CONF_PV_TILT,
+    CONF_REMOTECONTROL_ACTIVE_POWER,
+    CONF_REMOTECONTROL_AUTOREPEAT_DURATION,
+    CONF_REMOTECONTROL_POWER_CONTROL,
+    CONF_REMOTECONTROL_TRIGGER,
+    DOMAIN,
+)
 
 
 _LOGGER = logging.getLogger(__name__)
+
+
+def get_pv_system_schema() -> vol.Schema:
+    """Get schema for PV system configuration."""
+    return vol.Schema(
+        {
+            vol.Required(CONF_PV_AZIMUTH, default=180): selector.NumberSelector(
+                selector.NumberSelectorConfig(
+                    min=-180, max=180, step=1, unit_of_measurement="°", mode="box"
+                )
+            ),
+            vol.Required(CONF_PV_TILT, default=35): selector.NumberSelector(
+                selector.NumberSelectorConfig(
+                    min=0, max=90, step=1, unit_of_measurement="°", mode="box"
+                )
+            ),
+            vol.Required(CONF_MAX_PV_POWER, default=5000): selector.NumberSelector(
+                selector.NumberSelectorConfig(
+                    min=0, max=100000, step=100, unit_of_measurement="W", mode="box"
+                )
+            ),
+        }
+    )
+
+
+def get_price_schema() -> vol.Schema:
+    """Get schema for price sensor configuration."""
+    return vol.Schema(
+        {
+            vol.Required(CONF_PRICE_SENSOR): selector.EntitySelector(
+                selector.EntitySelectorConfig(domain="sensor")
+            ),
+        }
+    )
 
 
 def get_solax_schema() -> vol.Schema:
@@ -60,9 +106,35 @@ class SolarMindConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
+        """Handle the initial step."""
+        self._data[CONF_NAME] = (user_input or {}).get(CONF_NAME, "Solar Mind")
+        return await self.async_step_pv_system()
 
-        self._data[CONF_NAME] = user_input.get(CONF_NAME, "Solar Mind")
-        return await self.async_step_solax()
+    async def async_step_pv_system(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Handle PV system configuration."""
+        if user_input is not None:
+            self._data.update(user_input)
+            return await self.async_step_price()
+
+        return self.async_show_form(
+            step_id="pv_system",
+            data_schema=get_pv_system_schema(),
+        )
+
+    async def async_step_price(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Handle price sensor configuration."""
+        if user_input is not None:
+            self._data.update(user_input)
+            return await self.async_step_solax()
+
+        return self.async_show_form(
+            step_id="price",
+            data_schema=get_price_schema(),
+        )
 
 
     async def async_step_solax(
@@ -73,15 +145,16 @@ class SolarMindConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         if user_input is not None:
             self._data.update(user_input)
-            return await self._abort_if_unique_id_configured()
+            return self.async_create_entry(
+                title=self._data.get(CONF_NAME, "Solar Mind"),
+                data=self._data
+            )
 
         return self.async_show_form(
             step_id="solax",
-            data_schema=get_solax_schema(self._device_type),
+            data_schema=get_solax_schema(),
             errors=errors,
             description_placeholders={
                 "device_type": "Modbus Remote Control"
-                if self._device_type == SolaxDeviceType.MODBUS_REMOTE
-                else "Passive Mode (Sofar)"
             },
         )

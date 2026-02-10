@@ -54,9 +54,9 @@ class SolarMindCoordinator(DataUpdateCoordinator[SolarMindData]):
         
         # Initialize generation forecast client (forecast.solar API)
         # Use defaults if not configured in options
-        azimuth = float(entry.options[CONF_PV_AZIMUTH])
-        tilt = float(entry.options[CONF_PV_TILT])
-        max_peak_power_kw = float(entry.options[CONF_MAX_PV_POWER]) / 1000.0
+        azimuth = float(entry.data[CONF_PV_AZIMUTH])
+        tilt = float(entry.data[CONF_PV_TILT])
+        max_peak_power_kw = float(entry.data[CONF_MAX_PV_POWER]) / 1000.0
         self._generation_forecast_client = ForecastSolarApiGenerationForecast(
             latitude=hass.config.latitude,
             longitude=hass.config.longitude,

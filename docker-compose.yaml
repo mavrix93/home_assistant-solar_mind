@@ -1,0 +1,15 @@
+services:
+  homeassistant:
+    container_name: homeassistant-dev
+    image: "ghcr.io/home-assistant/home-assistant:stable"
+    volumes:
+      # Persistent HA config (dev/config on host -> /config in container)
+      # - ./config:/config
+      # Mount custom_components from repo root (../custom_components from dev/)
+      - ./custom_components:/config/custom_components:ro
+      # Timezone
+      - /etc/localtime:/etc/localtime:ro
+    ports:
+      - "8123:8123"
+    environment:
+      TZ: Europe/Prague
