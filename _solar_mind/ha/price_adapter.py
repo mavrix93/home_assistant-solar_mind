@@ -7,19 +7,48 @@ from typing import Any
 
 from homeassistant.core import HomeAssistant, State
 
-from custom_components.solar_mind.mind.models import HourlyPrice, PriceData
+from ..const import PriceSource
+from ..mind.models import HourlyPrice, PriceData
 
 _LOGGER = logging.getLogger(__name__)
 
 
 class PriceAdapter:
+    """Adapter to normalize price data from different sources.
+    
+    Supports:
+    - Czech OTE (cz_energy_spot_prices integration)
+    - Nord Pool (nordpool integration)
+    - Generic (manual configuration)
+    """
 
-
-    def __init__(self, hass: HomeAssistant) -> None:
+    def __init__(self, hass: HomeAssistant, source: PriceSource) -> None:
+        """Initialize the price adapter."""
         self.hass = hass
+        self.source = source
 
     def parse_price_data(self, state: State) -> PriceData:
+        """Parse price data from entity state based on source type.
+        
+        Args:
+            state: The state object of the price sensor entity
+            
+        Returns:
+            Normalized PriceData object
+        """
+        if self.source == PriceSource.CZECH_OTE:
+            return self._parse_czech_ote(state)
+        else:
+            raise NotImplementedError(f"Price source {self.source} not implemented")
 
+
+    def _parse_czech_ote(self, state: State) -> PriceData:
+        """Parse Czech OTE (cz_energy_spot_prices) data.
+        
+        The Czech Energy Spot Prices integration provides:
+        - State: current hour price
+        - Attributes: dictionary with ISO timestamps as keys and prices as values
+        """
         price_data = PriceData()
         
         # Current price from state
@@ -126,3 +155,18 @@ class PriceAdapter:
         price_data.tomorrow.sort(key=lambda x: x.start)
         
         return price_data
+
+
+def create_price_adapter(hass: HomeAssistant, source: str | PriceSource) -> PriceAdapter:
+    """Factory function to create a price adapter.
+    
+    Args:
+        hass: Home Assistant instance
+        source: Price source type (string or PriceSource enum)
+        
+    Returns:
+        Configured PriceAdapter instance
+    """
+    if isinstance(source, str):
+        source = PriceSource(source)
+    return PriceAdapter(hass, source)

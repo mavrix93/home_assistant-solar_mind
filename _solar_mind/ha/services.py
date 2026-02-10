@@ -9,7 +9,7 @@ import voluptuous as vol
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.helpers import config_validation as cv
 
-from custom_components.solar_mind.ha.const import DOMAIN
+from custom_components.solar_mind.const import DOMAIN
 from custom_components.solar_mind.ha.coordinator import SolarMindCoordinator
 
 _LOGGER = logging.getLogger(__name__)
@@ -21,6 +21,11 @@ SERVICE_SET_SELF_USE = "set_self_use"
 SERVICE_SET_HOUSE_FROM_GRID = "set_house_use_grid"
 SERVICE_APPLY_STRATEGY = "apply_strategy"
 SERVICE_SET_BATTERY_FOR_HOUSE = "set_battery_for_house"
+SERVICE_ADD_AWAY_PERIOD = "add_away_period"
+SERVICE_REMOVE_AWAY_PERIOD = "remove_away_period"
+SERVICE_SET_APPLIANCE = "set_high_demand_appliance"
+SERVICE_REMOVE_APPLIANCE = "remove_high_demand_appliance"
+
 # Service schemas
 SCHEMA_CHARGE = vol.Schema(
     {
@@ -38,6 +43,33 @@ SCHEMA_DISCHARGE = vol.Schema(
 
 SCHEMA_EMPTY = vol.Schema({})
 
+SCHEMA_AWAY_PERIOD = vol.Schema(
+    {
+        vol.Required("start"): vol.Any(cv.datetime, cv.string),
+        vol.Required("end"): vol.Any(cv.datetime, cv.string),
+        vol.Optional("label", default=""): cv.string,
+        vol.Optional("reduce_load_percent", default=50.0): vol.Coerce(float),
+    }
+)
+
+SCHEMA_REMOVE_AWAY_PERIOD = vol.Schema(
+    {
+        vol.Required("period_id"): cv.string,
+    }
+)
+
+SCHEMA_SET_APPLIANCE = vol.Schema(
+    {
+        vol.Required("name"): cv.string,
+        vol.Required("power_w"): cv.positive_int,
+    }
+)
+
+SCHEMA_REMOVE_APPLIANCE = vol.Schema(
+    {
+        vol.Required("name"): cv.string,
+    }
+)
 
 
 async def async_setup_services(hass: HomeAssistant) -> None:
@@ -130,8 +162,89 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         _LOGGER.info("Service call: apply strategy")
         await coordinator.async_apply_strategy()
 
+    async def handle_add_away_period(call: ServiceCall) -> dict[str, Any]:
+        """Handle add away period service call."""
+        coordinator = await _get_coordinator()
+        if coordinator is None:
+            _LOGGER.error("No Solar Mind coordinator found")
+            return {"success": False, "error": "No coordinator found"}
+        
+        start = call.data.get("start")
+        end = call.data.get("end")
+        label = call.data.get("label", "")
+        reduce_load = call.data.get("reduce_load_percent", 50.0)
+        
+        # Parse datetime if passed as string (e.g. from dashboard form)
+        if isinstance(start, str):
+            start = datetime.fromisoformat(start.replace("Z", "+00:00"))
+        if isinstance(end, str):
+            end = datetime.fromisoformat(end.replace("Z", "+00:00"))
+        if start.tzinfo is None:
+            start = start.replace(tzinfo=timezone.utc)
+        if end.tzinfo is None:
+            end = end.replace(tzinfo=timezone.utc)
+        
+        _LOGGER.info(
+            "Service call: add away period (%s to %s, label=%s)",
+            start,
+            end,
+            label,
+        )
+        
+        period_id = await coordinator.async_add_away_period(
+            start=start,
+            end=end,
+            label=label,
+            reduce_load_percent=reduce_load,
+        )
+        return {"success": True, "period_id": period_id}
 
+    async def handle_remove_away_period(call: ServiceCall) -> dict[str, Any]:
+        """Handle remove away period service call."""
+        coordinator = await _get_coordinator()
+        if coordinator is None:
+            _LOGGER.error("No Solar Mind coordinator found")
+            return {"success": False, "error": "No coordinator found"}
+        
+        period_id = call.data.get("period_id")
+        
+        _LOGGER.info("Service call: remove away period (%s)", period_id)
+        
+        removed = await coordinator.async_remove_away_period(period_id)
+        return {"success": removed}
 
+    async def handle_set_appliance(call: ServiceCall) -> dict[str, Any]:
+        """Handle set high demand appliance service call."""
+        coordinator = await _get_coordinator()
+        if coordinator is None:
+            _LOGGER.error("No Solar Mind coordinator found")
+            return {"success": False, "error": "No coordinator found"}
+        
+        name = call.data.get("name")
+        power_w = call.data.get("power_w")
+        
+        _LOGGER.info(
+            "Service call: set appliance (%s, %s W)",
+            name,
+            power_w,
+        )
+        
+        await coordinator.async_set_high_demand_appliance(name, power_w)
+        return {"success": True}
+
+    async def handle_remove_appliance(call: ServiceCall) -> dict[str, Any]:
+        """Handle remove high demand appliance service call."""
+        coordinator = await _get_coordinator()
+        if coordinator is None:
+            _LOGGER.error("No Solar Mind coordinator found")
+            return {"success": False, "error": "No coordinator found"}
+        
+        name = call.data.get("name")
+        
+        _LOGGER.info("Service call: remove appliance (%s)", name)
+        
+        removed = await coordinator.async_remove_high_demand_appliance(name)
+        return {"success": removed}
 
     # Register services (only if not already registered)
     if not hass.services.has_service(DOMAIN, SERVICE_CHARGE_FROM_GRID):
@@ -182,3 +295,34 @@ async def async_setup_services(hass: HomeAssistant) -> None:
             schema=SCHEMA_EMPTY,
         )
 
+    if not hass.services.has_service(DOMAIN, SERVICE_ADD_AWAY_PERIOD):
+        hass.services.async_register(
+            DOMAIN,
+            SERVICE_ADD_AWAY_PERIOD,
+            handle_add_away_period,
+            schema=SCHEMA_AWAY_PERIOD,
+        )
+
+    if not hass.services.has_service(DOMAIN, SERVICE_REMOVE_AWAY_PERIOD):
+        hass.services.async_register(
+            DOMAIN,
+            SERVICE_REMOVE_AWAY_PERIOD,
+            handle_remove_away_period,
+            schema=SCHEMA_REMOVE_AWAY_PERIOD,
+        )
+
+    if not hass.services.has_service(DOMAIN, SERVICE_SET_APPLIANCE):
+        hass.services.async_register(
+            DOMAIN,
+            SERVICE_SET_APPLIANCE,
+            handle_set_appliance,
+            schema=SCHEMA_SET_APPLIANCE,
+        )
+
+    if not hass.services.has_service(DOMAIN, SERVICE_REMOVE_APPLIANCE):
+        hass.services.async_register(
+            DOMAIN,
+            SERVICE_REMOVE_APPLIANCE,
+            handle_remove_appliance,
+            schema=SCHEMA_REMOVE_APPLIANCE,
+        )

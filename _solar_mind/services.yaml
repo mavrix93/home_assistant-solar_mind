@@ -1,0 +1,153 @@
+charge_battery_from_grid:
+  name: Charge Battery from Grid
+  description: Force charge the battery from the grid at a specified power level.
+  fields:
+    power_w:
+      name: Power (W)
+      description: Charging power in watts. If not specified, uses configured maximum.
+      required: false
+      example: 3000
+      selector:
+        number:
+          min: 0
+          max: 15000
+          step: 100
+          unit_of_measurement: W
+    duration_seconds:
+      name: Duration (seconds)
+      description: How long to charge. If not specified, uses configured autorepeat duration.
+      required: false
+      example: 3600
+      selector:
+        number:
+          min: 60
+          max: 86400
+          step: 60
+          unit_of_measurement: s
+
+discharge_battery_to_grid:
+  name: Discharge Battery to Grid
+  description: Discharge the battery to the grid (sell electricity) at a specified power level.
+  fields:
+    power_w:
+      name: Power (W)
+      description: Discharge power in watts. If not specified, uses configured maximum.
+      required: false
+      example: 3000
+      selector:
+        number:
+          min: 0
+          max: 15000
+          step: 100
+          unit_of_measurement: W
+    duration_seconds:
+      name: Duration (seconds)
+      description: How long to discharge. If not specified, uses configured autorepeat duration.
+      required: false
+      example: 3600
+      selector:
+        number:
+          min: 60
+          max: 86400
+          step: 60
+          unit_of_measurement: s
+
+set_self_use:
+  name: Set Self Use Mode
+  description: Set the inverter to self-use mode where it automatically manages battery charge/discharge based on PV production and house load.
+
+set_battery_for_house:
+  name: Set Battery for House
+  description: Use the battery to power the house (alias for self-use mode).
+
+set_house_use_grid:
+  name: Set House Use Grid
+  description: Set the house to use grid power and prevent battery discharge (preserve battery).
+
+apply_strategy:
+  name: Apply Strategy
+  description: Immediately run the active strategy and apply its recommendation. Useful for testing or forcing a strategy update.
+
+add_away_period:
+  name: Add Away Period
+  description: Add a period when you'll be away from home. The system will reduce expected load and optimize accordingly.
+  fields:
+    start:
+      name: Start Time
+      description: When the away period starts
+      required: true
+      example: "2024-01-15 08:00:00"
+      selector:
+        datetime:
+    end:
+      name: End Time
+      description: When the away period ends
+      required: true
+      example: "2024-01-17 18:00:00"
+      selector:
+        datetime:
+    label:
+      name: Label
+      description: Optional label for this away period (e.g., "Vacation", "Business trip")
+      required: false
+      example: "Vacation"
+      selector:
+        text:
+    reduce_load_percent:
+      name: Load Reduction (%)
+      description: How much to reduce expected house load during this period
+      required: false
+      default: 50
+      selector:
+        number:
+          min: 0
+          max: 100
+          step: 5
+          unit_of_measurement: "%"
+
+remove_away_period:
+  name: Remove Away Period
+  description: Remove a previously added away period.
+  fields:
+    period_id:
+      name: Period ID
+      description: The ID of the away period to remove (from away_periods sensor attributes)
+      required: true
+      example: "a1b2c3d4"
+      selector:
+        text:
+
+set_high_demand_appliance:
+  name: Set High Demand Appliance
+  description: Add or update a high-demand appliance. The system will recommend optimal times to run it based on solar surplus and prices.
+  fields:
+    name:
+      name: Appliance Name
+      description: Name of the appliance (e.g., "Water heater", "Washing machine")
+      required: true
+      example: "Water heater"
+      selector:
+        text:
+    power_w:
+      name: Power (W)
+      description: Power consumption of the appliance in watts
+      required: true
+      example: 2000
+      selector:
+        number:
+          min: 100
+          max: 20000
+          step: 100
+          unit_of_measurement: W
+
+remove_high_demand_appliance:
+  name: Remove High Demand Appliance
+  description: Remove a high-demand appliance from optimization tracking.
+  fields:
+    name:
+      name: Appliance Name
+      description: Name of the appliance to remove
+      required: true
+      example: "Water heater"
+      selector:
+        text:

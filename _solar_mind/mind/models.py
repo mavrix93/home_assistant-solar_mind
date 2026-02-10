@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 from enum import Enum
 from typing import Any
 
-from ..ha.const import StrategyKey, SystemStatus
+from ..const import StrategyKey, SystemStatus
 from .types import Energy, Timeseries
 
 

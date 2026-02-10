@@ -1,6 +1,6 @@
 import datetime
 from collections import defaultdict
-from custom_components.solar_mind.mind.types import (
+from .types import (
     Energy,
     Timeseries,
 )
