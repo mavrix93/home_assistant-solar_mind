@@ -1,5 +1,4 @@
 """Button entities for Solax PV Simulator."""
-from __future__ import annotations
 
 import logging
 

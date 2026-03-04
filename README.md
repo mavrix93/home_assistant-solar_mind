@@ -1,16 +1,17 @@
 # Solar Mind
 
-A Home Assistant custom integration that optimizes your solar PV and battery system using spot electricity prices and weather forecasts.
+A Home Assistant custom integration that optimizes your solar PV and battery system using spot electricity prices, fixed tariffs, and solar generation forecasts.
 
 ## Features
 
 - **Spot Price Optimization**: Charges battery when electricity prices are low, uses battery when prices are high
-- **Weather-Aware**: Considers solar production forecast to optimize battery usage
+- **Fixed Tariff Support**: Two-rate pricing (high/low) with Czech D57d distribution tariff timetable
+- **PV Generation Forecast**: Solar production forecasting via forecast.solar API
 - **Czech OTE Support**: Native support for Czech electricity spot prices (OTE) via [Czech Energy Spot Prices](https://github.com/rnovacek/homeassistant_cz_energy_spot_prices)
 - **Nord Pool Support**: Also works with Nord Pool prices
-- **Multiple Strategies**: Choose from spot price optimization, time-of-use, self-use only, or manual control
-- **Strategy Selector**: Switch strategies via Home Assistant helper entity (can be automated)
-- **Dashboard Entities**: Comprehensive sensors for building dashboards
+- **Charge-to-Target-SOC**: Charge battery to a specific SOC and automatically stop
+- **Calendar Integration**: Track charging/discharging events on a calendar entity
+- **Dashboard Cards**: Example ApexCharts dashboard configurations included
 - **Services**: Manual control via HA services for automations
 
 ## Prerequisites
@@ -19,12 +20,10 @@ A Home Assistant custom integration that optimizes your solar PV and battery sys
    - [Solax Modbus Integration](https://github.com/wills106/homeassistant-solax-modbus) (HACS) - Recommended for Gen4 inverters
    - Sofar inverter in Passive Mode
 
-2. **Spot Price Sensor**:
+2. **Spot Price Sensor** (for spot pricing mode):
    - **Czech Republic**: [Czech Energy Spot Prices](https://github.com/rnovacek/homeassistant_cz_energy_spot_prices) integration
    - **Nordic/Baltic**: [Nord Pool](https://www.home-assistant.io/integrations/nordpool/) integration
    - **Other**: Any sensor providing hourly prices
-
-3. **Weather Entity** (optional): Any weather integration for solar forecast
 
 ## Installation
 
@@ -44,30 +43,37 @@ cp .env.example .env
 ./scripts/deploy.sh
 ```
 
-Options: `-h HOST`, `-p PATH`, `-r` (restart HA), `--dry-run`. See `.env.example` for all variables.  
-The script also syncs dashboard cards to `config/www/solar-mind/`; add the resource `/local/solar-mind/solar-mind-cards.js` once in Settings → Dashboards → Resources.  
-**Repo safety:** `.env` is listed in `.gitignore`; never commit it. The repository can be published without leaking local hostnames or paths.
+Options: `-h HOST`, `-p PATH`, `-r` (restart HA), `--dry-run`. See `.env.example` for all variables.
 
 ## Configuration
 
 ### Initial Setup
 
-1. **Solax Control Type**: Choose between Modbus Remote Control (Gen4) or Passive Mode (Sofar)
+1. **Name**: A name for this Solar Mind instance
 
-2. **Solax Entities**: Select your Solax integration entities:
+2. **Solax Control Type**: Choose between Modbus Remote Control (Gen4) or Passive Mode (Sofar)
+
+3. **PV System Configuration**: Configure your solar panel parameters for generation forecasting:
+   - **Azimuth**: Panel azimuth angle (-180 to 180, 0=North, 180=South)
+   - **Tilt**: Panel tilt angle (0=horizontal, 90=vertical)
+   - **Max PV Power**: Maximum peak power output in Watts
+
+4. **Solax Entities**: Select your Solax integration entities:
    - Remote Control Power Control (select)
    - Remote Control Active Power (number)
    - Remote Control Trigger (button)
-   - Battery SOC sensor (optional)
+   - Remote Control Autorepeat Duration (optional)
+   - Battery SOC sensor
 
-3. **Price Sensor**: Select your spot price sensor and source type:
-   - Czech OTE (cz_energy_spot_prices)
-   - Nord Pool
-   - Generic
+5. **Pricing Mode**: Choose between:
+   - **Spot Prices**: Real-time OTE sensor for dynamic pricing
+   - **Fixed Tariff**: Two-rate schedule (high/low) with D57d distribution tariff timetable
 
-4. **Weather Entity**: Optionally select a weather entity for solar forecasting
+6. **Price Sensor** (for spot mode): Select your spot price sensor
 
-5. **Strategy**: Configure strategy selector entity and fallback strategy
+7. **Fixed Tariff Prices** (for fixed mode):
+   - High Tariff Price (CZK/kWh)
+   - Low Tariff Price (CZK/kWh)
 
 ### Options
 
@@ -75,8 +81,6 @@ After setup, configure options:
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| Strategy Selector Entity | input_select to choose active strategy | - |
-| Fallback Strategy | Strategy when selector unavailable | Spot price + weather |
 | Charge Price Threshold | Charge from grid below this price | 0.05 CZK/kWh |
 | Discharge Price Threshold | Sell to grid above this price | 0.15 CZK/kWh |
 | Min SOC | Minimum battery percentage | 10% |
@@ -86,54 +90,50 @@ After setup, configure options:
 | Charge Window Start | Start of low-rate window | 22 (10 PM) |
 | Charge Window End | End of low-rate window | 6 (6 AM) |
 | Discharge Allowed | Enable selling to grid | false |
-| Update Interval | Strategy update frequency | 5 min |
+| Update Interval | Data update frequency | 30 min |
 | Autorepeat Duration | Solax command duration | 3600 s |
 
-## Strategies
+## Entities
 
-### Spot Price + Weather (default)
-
-The main optimization strategy that:
-- Charges from grid when price is below threshold and in charge window
-- Discharges to grid (if allowed) when price is above threshold
-- Uses self-use mode when solar forecast is good
-- Preserves battery when prices are medium
-
-### Time of Use
-
-Fixed schedule based on charge window:
-- Charges during configured window (e.g., night hours)
-- Uses self-use or no-discharge outside window
-- Ignores spot prices
-
-### Self Use Only
-
-Simple mode where inverter manages everything:
-- No grid charging
-- No grid selling
-- Battery charges from PV, discharges for house load
-
-### Manual
-
-No automatic control:
-- Use services to manually control the system
-- Strategy runs but doesn't execute commands
-
-## Dashboard Entities
+### Sensors
 
 | Entity | Description |
 |--------|-------------|
-| `sensor.solar_mind_status` | Current status (charging, discharging, self_use, etc.) |
-| `sensor.solar_mind_recommended_action` | Human-readable recommendation |
-| `sensor.solar_mind_current_price` | Current spot price with attributes |
-| `sensor.solar_mind_active_strategy` | Currently active strategy |
-| `sensor.solar_mind_strategy_mode` | Detailed strategy decision |
+| `sensor.solar_mind_current_price` | Current electricity price with attributes (hourly prices, min/max today, price mode) |
 | `sensor.solar_mind_next_cheap_hour` | Next hour below charge threshold |
 | `sensor.solar_mind_cheapest_hours_today` | List of cheapest hours today |
-| `sensor.solar_mind_last_update` | Last strategy run time |
-| `sensor.solar_mind_next_action` | Reason for current action |
-| `sensor.solar_mind_battery_soc` | Battery SOC from last read |
-| `sensor.solar_mind_last_error` | Last error (diagnostic) |
+| `sensor.solar_mind_generation_forecast` | PV generation forecast from forecast.solar (Wh for current hour, hourly forecast in attributes) |
+| `sensor.solar_mind_charge_to_soc_status` | Charge-to-value status (Idle, Charging to X%, Target reached, etc.) |
+| `sensor.solar_mind_last_update` | Last data update time |
+| `sensor.solar_mind_last_error` | Last error (diagnostic, disabled by default) |
+
+### Numbers
+
+| Entity | Description |
+|--------|-------------|
+| `number.solar_mind_target_battery_soc` | Target SOC percentage for charge-to-value (10–100%) |
+| `number.solar_mind_charge_to_soc_power` | Charging power for charge-to-value (100–15000 W) |
+| `number.solar_mind_charge_to_soc_duration` | Trigger duration for charge-to-value (300–86400 s) |
+
+### Buttons
+
+| Entity | Description |
+|--------|-------------|
+| `button.solar_mind_charge_battery_from_grid` | Start charging battery from grid |
+| `button.solar_mind_discharge_battery_to_grid` | Start discharging battery to grid |
+| `button.solar_mind_set_self_use` | Set inverter to self-use mode |
+| `button.solar_mind_set_house_use_grid` | Set house to use grid (preserve battery) |
+| `button.solar_mind_set_battery_for_house` | Use battery for house (alias for self-use) |
+| `button.solar_mind_apply_strategy` | Refresh data and run strategy |
+| `button.solar_mind_stop_discharge` | Stop battery discharge (sets "Enabled No Discharge" mode) |
+| `button.solar_mind_charge_to_target_soc` | Start charging to target SOC |
+| `button.solar_mind_cancel_charge_to_soc` | Cancel an in-progress charge-to-value |
+
+### Calendar
+
+| Entity | Description |
+|--------|-------------|
+| `calendar.solar_mind_calendar` | Calendar tracking charging/discharging events |
 
 ## Services
 
@@ -185,35 +185,61 @@ service: solar_mind.set_house_use_grid
 
 ### solar_mind.apply_strategy
 
-Immediately run and apply strategy.
+Refresh data and apply any pending actions.
 
 ```yaml
 service: solar_mind.apply_strategy
 ```
 
-## Strategy Selector Helper
+### solar_mind.charge_to_value
 
-To switch strategies from the dashboard or automations, create an `input_select` helper:
+Charge the battery from the grid until a target SOC is reached, then automatically stop discharge. This uses four Solax remote control entities under the hood:
 
-1. Go to Settings → Devices & Services → Helpers
-2. Add Helper → Dropdown
-3. Name: "Solar Mind Strategy"
-4. Options (use exact values):
-   - `spot_price_weather`
-   - `time_of_use`
-   - `self_use_only`
-   - `manual`
-5. In Solar Mind options, select this entity as Strategy Selector
+1. **Mode** is set to `Enabled Power Control` via the configured power control select
+2. **Charging power** is set via the configured active power number
+3. **Trigger duration** is set via the configured autorepeat duration number
+4. **Action is triggered** via the configured trigger button
 
-Now you can switch strategies from the UI or via automations:
+The integration monitors the configured Battery SOC sensor. When the target is reached, it switches to `Enabled No Discharge` mode to stop discharging (preserving the battery). You can also press `button.solar_mind_stop_discharge` at any time to manually stop discharge.
+
+All parameters are optional — if omitted, the current values from the corresponding number entities are used (defaults: target SOC 80%, power 5000 W, duration 3600 s).
 
 ```yaml
-service: input_select.select_option
-target:
-  entity_id: input_select.solar_mind_strategy
+service: solar_mind.charge_to_value
 data:
-  option: self_use_only
+  target_soc: 80          # optional, 10–100 %
+  power_w: 5000           # optional, charging power in watts
+  duration_seconds: 3600  # optional, trigger duration in seconds
 ```
+
+You can also control this feature interactively from the UI:
+
+1. Set `number.solar_mind_target_battery_soc` to the desired SOC %
+2. Adjust `number.solar_mind_charge_to_soc_power` (default 5000 W)
+3. Adjust `number.solar_mind_charge_to_soc_duration` (default 3600 s)
+4. Press `button.solar_mind_charge_to_target_soc` to start
+5. Monitor progress via `sensor.solar_mind_charge_to_soc_status`
+6. Press `button.solar_mind_cancel_charge_to_soc` to abort
+
+## Fixed Tariff (D57d)
+
+When using Fixed Tariff pricing mode, Solar Mind uses the Czech D57d distribution tariff timetable:
+
+**Workday Low-Tariff Windows (CET):**
+- 00:00–06:15
+- 07:15–08:15
+- 09:15–18:15
+- 19:15–20:15
+- 21:15–23:59
+
+**Weekend Low-Tariff Windows (CET):**
+- 00:00–07:45
+- 08:45–09:45
+- 10:45–18:15
+- 19:15–20:15
+- 21:15–23:59
+
+Hours not listed are high-tariff periods. The `sensor.solar_mind_current_price` entity will show attributes including `current_tariff` (low/high) when in fixed mode.
 
 ## Example Dashboard Card
 
@@ -221,14 +247,28 @@ data:
 type: entities
 title: Solar Mind
 entities:
-  - entity: sensor.solar_mind_status
-  - entity: sensor.solar_mind_recommended_action
   - entity: sensor.solar_mind_current_price
-  - entity: sensor.solar_mind_active_strategy
-  - entity: sensor.solar_mind_battery_soc
+  - entity: sensor.solar_mind_generation_forecast
   - entity: sensor.solar_mind_cheapest_hours_today
   - entity: sensor.solar_mind_next_cheap_hour
+  - entity: sensor.solar_mind_charge_to_soc_status
+  - entity: number.solar_mind_target_battery_soc
+  - entity: button.solar_mind_charge_to_target_soc
 ```
+
+### ApexCharts Dashboard
+
+The `lovelace/solar_dashboard.yaml` file contains example ApexCharts card configurations for visualizing:
+- Real-time power flow (PV, Load, Battery)
+- Battery state of charge
+- Today's energy summary
+- PV generation curves
+- PV vs House Load comparison
+- Battery charge/discharge flow
+- Self-sufficiency metrics
+- Grid cost with tariff visualization
+
+Requires the [ApexCharts Card](https://github.com/RomRider/apexcharts-card) from HACS.
 
 ## Example Automation
 
@@ -241,10 +281,6 @@ automation:
       - platform: numeric_state
         entity_id: sensor.solar_mind_current_price
         below: 0.01
-    condition:
-      - condition: numeric_state
-        entity_id: sensor.solar_mind_battery_soc
-        below: 80
     action:
       - service: solar_mind.charge_battery_from_grid
         data:
@@ -259,6 +295,7 @@ automation:
 - Check that your price sensor is available and has the expected attributes
 - For Czech OTE: verify the sensor has hourly prices in attributes
 - For Nord Pool: verify `raw_today` and `raw_tomorrow` attributes exist
+- For Fixed Tariff: check that high/low prices were configured during setup
 
 ### Commands not executing
 
@@ -266,11 +303,11 @@ automation:
 - Check that the Solax integration is working (test manually via Developer Tools)
 - Check logs for errors: `Logger: custom_components.solar_mind`
 
-### Strategy not changing
+### Generation forecast not working
 
-- Verify the strategy selector entity exists and has correct options
-- Check that the entity state matches a strategy key exactly
-- Check the fallback strategy setting
+- Verify latitude/longitude in Home Assistant config
+- Check PV system parameters (azimuth, tilt, max power)
+- The forecast.solar API may have rate limits
 
 ## Solax PV Simulator (Sandbox Mode)
 
@@ -361,12 +398,6 @@ The `dev/` directory contains:
 
 The repo's `custom_components/` is mounted read-only into the container, so code changes take effect after restarting HA.
 
-If the Overview dashboard shows **Configuration error** or some entities as unavailable (e.g. price sensor or Solar Mind sensors), common causes are:
-
-- **Price sensor**: Solar Mind resolves `sensor.current_spot_electricity_price` automatically; if your Czech OTE integration created `sensor.current_spot_electricity_price_2`, the coordinator will use it.
-- **Weather**: If `weather.get_forecasts` is not available in your HA version, the integration falls back to the weather entity's forecast attribute.
-- **Solar Mind entities with _2 suffix**: HA may register sensors as `sensor.solar_mind_status_2` etc. Edit the Overview dashboard (pencil icon → edit the card), and re-select the Solar Mind entities from the list so the card shows the correct ones.
-
 ### Common Commands
 
 ```bash
@@ -400,26 +431,12 @@ docker-compose -f dev/docker-compose.yml up -d
    - Battery SOC: `sensor.solax_simulator_battery_soc`
 5. For price sensor, create a helper (`input_number`) or use a mock sensor
 
-### Re-seeding (e.g. after fixing welcome/onboarding)
-
-If you still see the welcome/onboarding page after starting HA, or if HA logs **KeyError: 'created_at'** when loading config entries (old storage format):
-
-1. Stop the container: `docker-compose -f dev/docker-compose.yml down`
-2. Remove existing storage: `rm -rf dev/config/.storage`
-3. If you have a stray `dev/dev/` folder (from an older compose path bug), remove it so HA uses the correct config: `rm -rf dev/dev`
-4. Install bcrypt if needed: `pip install bcrypt` (or in your venv)
-5. Re-run the seed: `./dev/seed.sh`
-6. Start again: `docker-compose -f dev/docker-compose.yml up -d`
-
-The compose file mounts `dev/config` as `/config` (paths are relative to the `dev/` directory). The seed script writes to `dev/config/.storage`, so the same directory is used.
-
 ### Notes
 
 - The seed script requires **bcrypt** (`pip install bcrypt`) for HA-compatible password hashing.
 - Use `docker-compose` (with hyphen). If you have Docker Compose V2 only, use `docker compose` (with space) instead.
 - The default password (`dev`) is for development only – don't expose this instance to the internet
 - On Apple Silicon Macs, the official HA image works natively (multi-arch)
-- If you see jemalloc errors on ARM, add `DISABLE_JEMALLOC: true` to environment in docker-compose.yml
 
 ### Cursor + Home Assistant MCP
 
@@ -435,15 +452,12 @@ The sandbox seeds the [Model Context Protocol Server](https://www.home-assistant
 
 2. **Get the MCP token** (created by seed, survives restarts until you re-seed):
    - After running `./dev/seed.sh`, the token is in `dev/config/.ha_mcp_token` (gitignored).
-   - Use its contents as `API_ACCESS_TOKEN` in Cursor MCP. Example: `"env": { "API_ACCESS_TOKEN": "<paste token from .ha_mcp_token>" }`, or point your shell/env at the file.
+   - Use its contents as `API_ACCESS_TOKEN` in Cursor MCP.
 
 3. **Add the MCP server in Cursor:**
    - Open Cursor **Settings** → **MCP** → **Add new global MCP server**
-   - Paste the contents of `dev/cursor-mcp.example.json`, then set `API_ACCESS_TOKEN` to the contents of `dev/config/.ha_mcp_token` (created by `./dev/seed.sh`)
-   - Alternatively merge the `mcpServers` entry into your existing `~/.cursor/mcp.json`
+   - Paste the contents of `dev/cursor-mcp.example.json`, then set `API_ACCESS_TOKEN` to the contents of `dev/config/.ha_mcp_token`
    - Restart Cursor; the "Home Assistant" server should show green when the sandbox is running.
-
-With the MCP server connected, you can ask Cursor to list entities, get state, or call services on the sandbox to validate integration changes. The project includes a Cursor rule (`.cursor/rules/validate-via-ha-mcp.mdc`) that encourages using these tools when validating sandbox-related changes.
 
 ## Dependencies
 
@@ -451,24 +465,13 @@ This project uses three separate dependency mechanisms; keep them consistent whe
 
 | Layer | File | Purpose |
 |-------|------|---------|
-| **Home Assistant (runtime)** | `custom_components/solar_mind/manifest.json` | Declares what HA installs when the integration loads. Use `requirements` for pip packages (pinned, e.g. `"package==1.0.0"`), `dependencies` for HA core domains (e.g. `["http"]`), `after_dependencies` for load order. Solar Mind has no pip runtime deps (`requirements: []`). |
-| **Dev/test (source of truth)** | `pyproject.toml` | PEP 621 `[project.optional-dependencies]`: `test` = unit tests only, `test-ha` = unit + config flow tests (includes Home Assistant). Python 3.11+. Install with `pip install -e ".[test]"` or `pip install -e ".[test-ha]"`. |
-| **Dev/test (pip -r)** | `requirements-test.txt`, `requirements-test-ha.txt` | Plain pip requirement files for users who prefer `pip install -r`. Must be kept in sync with `pyproject.toml` optional-dependencies `test` and `test-ha`. |
-
-**Guidelines:**
-
-- **Runtime (HA)**: Edit only `manifest.json`. Do not add third-party libs unless the integration needs them at runtime; use pinned versions.
-- **Dev/test**: Edit `pyproject.toml` first. Then update the corresponding `requirements-test*.txt` so both install paths stay equivalent.
-- **Pytest**: Pytest options live in `pyproject.toml` under `[tool.pytest.ini_options]` (no separate `pytest.ini`).
+| **Home Assistant (runtime)** | `custom_components/solar_mind/manifest.json` | Declares what HA installs when the integration loads. Use `requirements` for pip packages (pinned), `dependencies` for HA core domains, `after_dependencies` for load order. Solar Mind has no pip runtime deps (`requirements: []`). |
+| **Dev/test (source of truth)** | `pyproject.toml` | PEP 621 `[project.optional-dependencies]`: `test` = unit tests only, `test-ha` = unit + config flow tests (includes Home Assistant). Python 3.11+. |
+| **Dev/test (pip -r)** | `requirements-test.txt`, `requirements-test-ha.txt` | Plain pip requirement files for users who prefer `pip install -r`. Must be kept in sync with `pyproject.toml`. |
 
 ## Testing
 
 Tests use **pytest** with **pytest-asyncio** for async tests. **Python 3.11+** is required.
-
-### Requirements
-
-- Python 3.11 or newer (use `pyenv` or `.python-version` in the repo)
-- Install: `pip install -r requirements-test.txt` or `pip install -e ".[test]"`
 
 ### Setup
 
@@ -484,42 +487,11 @@ python3.11 -m venv .venv
 .venv/bin/python -m pytest tests/ -v
 ```
 
-Async tests (e.g. config flow) run automatically via `asyncio_mode = auto` in `pyproject.toml`.
-
-- **Unit tests** (31 tests): strategies, models, price adapter. No HA required; `homeassistant` is mocked.
-- **Config flow tests** (`test_config_flow.py`): require `pytest-homeassistant-custom-component`. Skipped if that package is not installed.
-
-**To run the config flow tests** (including the 3 that are otherwise skipped):
-
-```bash
-# Install HA test package (~500MB+ with homeassistant and deps; ensure enough disk space)
-.venv/bin/pip install -r requirements-test-ha.txt
-
-# Run config flow tests only
-.venv/bin/python -m pytest tests/test_config_flow.py -v
-
-# Or run all Solar Mind tests (no skips)
-.venv/bin/python -m pytest tests/test_strategies.py tests/test_models.py tests/test_price_adapter.py tests/test_config_flow.py -v
-```
-
-To run only Solar Mind unit tests (without HA package):
-
-```bash
-.venv/bin/python -m pytest tests/test_strategies.py tests/test_models.py tests/test_price_adapter.py tests/test_config_flow.py -v
-```
-
 With coverage:
 
 ```bash
 .venv/bin/python -m pytest tests/ -v --cov=custom_components.solar_mind --cov-report=term-missing
 ```
-
-### Test categories
-
-- **test_strategies.py**: Solar Mind strategies (spot price, time-of-use, self-use, manual)
-- **test_models.py**: Data models (PriceData, StrategyOutput, etc.)
-- **test_price_adapter.py**: Price adapter (Czech OTE, Nord Pool)
-- **test_config_flow.py**: Config flow (async; needs pytest-homeassistant-custom-component)
 
 ## License
 

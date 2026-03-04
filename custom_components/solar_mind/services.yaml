@@ -67,3 +67,49 @@ set_house_use_grid:
 apply_strategy:
   name: Apply Strategy
   description: Immediately run the active strategy and apply its recommendation. Useful for testing or forcing a strategy update.
+
+charge_to_value:
+  name: Charge to Value
+  description: >
+    Charge the battery from the grid until a target SOC is reached, then stop discharge
+    (Enabled No Discharge). Sets the power control mode to "Enabled Power Control"
+    via select.solax_inverter_remotecontrol_power_control_mode_1, sets the charging power
+    via number.solax_inverter_remotecontrol_active_power_mode_1, sets the trigger duration
+    via number.solax_inverter_remotecontrol_autorepeat_duration_mode_1_9, and triggers the
+    action via button.solax_inverter_remotecontrol_trigger_mode_1_7. When the target SOC is
+    reached, the mode is switched to "Enabled No Discharge" to stop discharging. Monitor
+    progress via the "Charge to SOC Status" sensor.
+  fields:
+    target_soc:
+      name: Target SOC (%)
+      description: Battery state-of-charge percentage to charge to. If not specified, uses the current Target Battery SOC number entity value.
+      required: false
+      example: 80
+      selector:
+        number:
+          min: 10
+          max: 100
+          step: 5
+          unit_of_measurement: "%"
+    power_w:
+      name: Charging Power (W)
+      description: Charging power in watts. If not specified, uses the current Charge to SOC Power entity value (default 5000 W).
+      required: false
+      example: 5000
+      selector:
+        number:
+          min: 100
+          max: 15000
+          step: 100
+          unit_of_measurement: W
+    duration_seconds:
+      name: Trigger Duration (seconds)
+      description: Duration for the Solax remote control trigger. If not specified, uses the current Charge to SOC Duration entity value (default 3600 s).
+      required: false
+      example: 3600
+      selector:
+        number:
+          min: 300
+          max: 86400
+          step: 300
+          unit_of_measurement: s

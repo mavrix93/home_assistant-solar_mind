@@ -31,7 +31,6 @@
         "title": "Solax Entity Configuration",
         "description": "Select the Solax entities for {device_type}",
         "data": {
-          "energy_storage_mode": "Energy Storage Mode (optional)",
           "battery_soc": "Battery SOC Sensor",
           "remotecontrol_power_control": "Remote Control Power Control",
           "remotecontrol_active_power": "Remote Control Active Power",
@@ -41,16 +40,36 @@
           "passive_update_trigger": "Passive: Update Trigger Button"
         }
       },
-      "price": {
-        "title": "Price Sensor Configuration",
-        "description": "Select the spot price sensor for electricity prices.",
+      "price_mode": {
+        "title": "Pricing Mode",
+        "description": "Choose how electricity prices are determined.",
         "data": {
-          "price_sensor": "Price Sensor",
-          "price_source": "Price Source"
+          "price_mode": "Pricing Mode"
         },
         "data_description": {
-          "price_sensor": "Sensor that provides hourly spot prices",
-          "price_source": "Select the integration providing prices (affects how data is parsed)"
+          "price_mode": "Spot prices use a real-time OTE sensor. Fixed tariff uses a two-rate schedule (high/low) with the D57d timetable."
+        }
+      },
+      "price_spot": {
+        "title": "Spot Price Sensor",
+        "description": "Select the spot price sensor for electricity prices (e.g. Czech Energy Spot Prices / OTE).",
+        "data": {
+          "price_sensor": "Price Sensor"
+        },
+        "data_description": {
+          "price_sensor": "Sensor that provides hourly spot prices"
+        }
+      },
+      "price_fixed": {
+        "title": "Fixed Tariff Prices",
+        "description": "Set the electricity price for the high-tariff and low-tariff periods. The time schedule follows the D57d distribution tariff.",
+        "data": {
+          "fixed_high_price": "High Tariff Price",
+          "fixed_low_price": "Low Tariff Price"
+        },
+        "data_description": {
+          "fixed_high_price": "Price during high-tariff periods (CZK/kWh)",
+          "fixed_low_price": "Price during low-tariff periods (CZK/kWh)"
         }
       },
       "weather": {
@@ -122,6 +141,28 @@
     }
   },
   "entity": {
+    "number": {
+      "target_battery_soc": {
+        "name": "Target Battery SOC"
+      },
+      "charge_to_soc_power": {
+        "name": "Charge to SOC Power"
+      },
+      "charge_to_soc_duration": {
+        "name": "Charge to SOC Duration"
+      }
+    },
+    "button": {
+      "stop_discharge": {
+        "name": "Stop Discharge"
+      },
+      "charge_to_target_soc": {
+        "name": "Charge to Target SOC"
+      },
+      "cancel_charge_to_soc": {
+        "name": "Cancel Charge to SOC"
+      }
+    },
     "sensor": {
       "status": {
         "name": "Status"
@@ -155,6 +196,9 @@
       },
       "last_error": {
         "name": "Last Error"
+      },
+      "charge_to_soc_status": {
+        "name": "Charge to SOC Status"
       }
     }
   },
@@ -182,6 +226,10 @@
     "apply_strategy": {
       "name": "Apply Strategy",
       "description": "Immediately run the active strategy."
+    },
+    "charge_to_value": {
+      "name": "Charge to Value",
+      "description": "Charge the battery from grid until a target SOC is reached."
     }
   }
 }

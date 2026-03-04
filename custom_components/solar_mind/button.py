@@ -61,6 +61,24 @@ BUTTON_DESCRIPTIONS: tuple[SolarMindButtonEntityDescription, ...] = (
         icon="mdi:strategy",
         press_fn=lambda coord: coord.async_apply_strategy(),
     ),
+    SolarMindButtonEntityDescription(
+        key="stop_discharge",
+        name="Stop Discharge",
+        icon="mdi:battery-lock",
+        press_fn=lambda coord: coord.async_stop_discharge(),
+    ),
+    SolarMindButtonEntityDescription(
+        key="charge_to_target_soc",
+        name="Charge to Target SOC",
+        icon="mdi:battery-charging-wireless",
+        press_fn=lambda coord: coord.async_charge_to_target_soc(),
+    ),
+    SolarMindButtonEntityDescription(
+        key="cancel_charge_to_soc",
+        name="Cancel Charge to SOC",
+        icon="mdi:battery-off",
+        press_fn=lambda coord: coord.async_cancel_charge_to_soc(),
+    ),
 )
 
 

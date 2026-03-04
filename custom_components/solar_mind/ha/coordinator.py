@@ -6,34 +6,44 @@ import logging
 import zoneinfo
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 import uuid
+
+if TYPE_CHECKING:
+    from ..calendar import SolarMindCalendar
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import STATE_UNAVAILABLE, STATE_UNKNOWN
-from homeassistant.core import HomeAssistant
-from homeassistant.helpers.event import async_track_time_change
+from homeassistant.core import Event, HomeAssistant, callback as ha_callback
+from homeassistant.helpers.event import async_track_state_change_event, async_track_time_change
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
 from custom_components.solar_mind.ha.price_adapter import PriceAdapter
 
 from .const import (
+    CONF_BATTERY_SOC,
+    CONF_FIXED_HIGH_PRICE,
+    CONF_FIXED_LOW_PRICE,
     CONF_MAX_PV_POWER,
+    CONF_PRICE_MODE,
     CONF_PRICE_SENSOR,
     CONF_PV_AZIMUTH,
     CONF_PV_TILT,
     CONF_REMOTECONTROL_ACTIVE_POWER,
+    CONF_REMOTECONTROL_AUTOREPEAT_DURATION,
     CONF_REMOTECONTROL_POWER_CONTROL,
     CONF_REMOTECONTROL_TRIGGER,
     DOMAIN,
+    PriceMode,
     StrategyOutput,
     SystemStatus,
 )
 
+from ..mind.fixed_tariff import build_fixed_price_data
 from ..mind.models import (
     PriceData,
     SolarMindData,
-    
+
 )
 from ..mind.generation_forecast import ForecastSolarApiGenerationForecast
 
@@ -74,8 +84,17 @@ class SolarMindCoordinator(DataUpdateCoordinator[SolarMindData]):
             update_interval=timedelta(minutes=plan_update_minutes),
         )
         self._hourly_execution_unsub: Any = None
+        self.calendar: SolarMindCalendar | None = None
 
         self._last_generation_forecast: Timeseries[Energy] | None = None
+
+        # Charge-to-target-SOC state
+        self._target_soc: int = 80
+        self._charge_to_soc_power_w: int = 5000
+        self._charge_to_soc_duration_s: int = 3600
+        self._charging_to_soc_active: bool = False
+        self._charge_to_soc_status: str = "Idle"
+        self._soc_listener_unsub: Any = None
     
     def schedule_hourly_execution(self) -> None:
         """Schedule Solax execution at the start of every hour based on plan."""
@@ -134,7 +153,8 @@ class SolarMindCoordinator(DataUpdateCoordinator[SolarMindData]):
         try:
             data = SolarMindData()
             data.last_update = datetime.now(timezone.utc)
-            
+            data.price_mode = self.entry.data.get(CONF_PRICE_MODE, PriceMode.SPOT)
+
             # Fetch price data
             data.prices = await self._fetch_prices()
 
@@ -142,6 +162,11 @@ class SolarMindCoordinator(DataUpdateCoordinator[SolarMindData]):
             data.generation_forecast = await self._fetch_generation_forecast()
 
             
+            # Copy charge-to-SOC state
+            data.charge_to_soc_status = self._charge_to_soc_status
+            data.charge_to_soc_target = self._target_soc
+            data.charge_to_soc_active = self._charging_to_soc_active
+
             data.last_error = None
             return data
             
@@ -189,7 +214,15 @@ class SolarMindCoordinator(DataUpdateCoordinator[SolarMindData]):
 
 
     async def _fetch_prices(self) -> PriceData:
-        """Fetch and parse price data from configured sensor."""
+        """Fetch and parse price data from configured sensor or fixed tariff."""
+        price_mode = self.entry.data.get(CONF_PRICE_MODE, PriceMode.SPOT)
+
+        if price_mode == PriceMode.FIXED:
+            high = float(self.entry.data.get(CONF_FIXED_HIGH_PRICE, 6.0))
+            low = float(self.entry.data.get(CONF_FIXED_LOW_PRICE, 2.5))
+            return build_fixed_price_data(high_price=high, low_price=low)
+
+        # Spot price mode – read from sensor
         price_sensor_id = self.entry.data.get(CONF_PRICE_SENSOR)
         if not price_sensor_id:
             _LOGGER.debug("No price sensor configured")
@@ -211,16 +244,11 @@ class SolarMindCoordinator(DataUpdateCoordinator[SolarMindData]):
 
     async def _execute_strategy(self, output: StrategyOutput) -> None:
         """Execute strategy output by calling Solax entities."""
-
-        
         _LOGGER.info("Executing strategy: %s", output)
-        # try:
-        #     if self.device_type == SolaxDeviceType.MODBUS_REMOTE:
-        #         await self._execute_modbus_remote(output)
-        #     else:
-        #         raise NotImplementedError("Passive mode not implemented")
-        # except Exception as e:
-        #     _LOGGER.error("Failed to execute strategy: %s", e)
+        try:
+            await self._execute_modbus_remote(output)
+        except Exception as e:
+            _LOGGER.error("Failed to execute strategy: %s", e)
 
     def _entity_available(self, entity_id: str) -> bool:
         """Return True if the entity exists and is available."""
@@ -256,7 +284,19 @@ class SolarMindCoordinator(DataUpdateCoordinator[SolarMindData]):
                     {"entity_id": resolved, "value": output.power_w},
                 )
 
-      
+        # Set autorepeat duration if configured
+        autorepeat_entity_id = self.entry.data.get(CONF_REMOTECONTROL_AUTOREPEAT_DURATION)
+        if autorepeat_entity_id:
+            resolved = await self._resolve_solax_entity_id(autorepeat_entity_id)
+            if resolved and self._entity_available(resolved):
+                duration = output.duration_seconds or self.entry.options.get(
+                    "autorepeat_duration", 3600
+                )
+                await self.hass.services.async_call(
+                    "number",
+                    "set_value",
+                    {"entity_id": resolved, "value": duration},
+                )
 
         # Trigger the remote control
         trigger_entity_id = self.entry.data[CONF_REMOTECONTROL_TRIGGER]
@@ -270,18 +310,32 @@ class SolarMindCoordinator(DataUpdateCoordinator[SolarMindData]):
                 )
 
 
+    def record_calendar_event(self, summary: str, duration_seconds: int | None = None) -> None:
+        """Record an event on the calendar entity for the current hour."""
+        if self.calendar is None:
+            _LOGGER.debug("No calendar entity registered, skipping event recording")
+            return
+        now = datetime.now(timezone.utc)
+        start = now.replace(minute=0, second=0, microsecond=0)
+        if duration_seconds:
+            end = start + timedelta(seconds=duration_seconds)
+        else:
+            end = start + timedelta(hours=1)
+        self.calendar.add_event(summary=summary, start=start, end=end)
+
     async def async_charge_from_grid(
         self, power_w: int | None = None, duration_seconds: int | None = None
     ) -> None:
         """Manually trigger charge from grid using Battery Control mode."""
         output = StrategyOutput(
             status=SystemStatus.CHARGING,
-            mode="SOLAX_MODE_BATTERY_CONTROL",
+            mode="Enabled Battery Control",
             power_w=power_w or self.entry.options.get("max_charge_power", 3000),
             duration_seconds=duration_seconds,
             reason="Manual charge from grid",
         )
         await self._execute_strategy(output)
+        self.record_calendar_event("Charging", duration_seconds)
 
     async def async_discharge_to_grid(
         self, power_w: int | None = None, duration_seconds: int | None = None
@@ -290,7 +344,7 @@ class SolarMindCoordinator(DataUpdateCoordinator[SolarMindData]):
         power = -(power_w or self.entry.options.get("max_discharge_power", 3000))
         output = StrategyOutput(
             status=SystemStatus.DISCHARGING,
-            mode="SOLAX_MODE_GRID_CONTROL",
+            mode="Enabled Grid Control",
             power_w=power,
             duration_seconds=duration_seconds,
             reason="Manual discharge to grid",
@@ -302,21 +356,229 @@ class SolarMindCoordinator(DataUpdateCoordinator[SolarMindData]):
         
         output = StrategyOutput(
             status=SystemStatus.SELF_USE,
-            mode="SOLAX_MODE_SELF_USE",
+            mode="Enabled Self Use",
             reason="Manual self-use mode",
         )
         await self._execute_strategy(output)
 
     async def async_set_house_from_grid(self) -> None:
         """Manually set house-from-grid mode (no discharge)."""
-        
+
         output = StrategyOutput(
             status=SystemStatus.HOUSE_FROM_GRID,
-            mode="SOLAX_MODE_NO_DISCHARGE",
+            mode="Enabled No Discharge",
             reason="Manual house from grid (no discharge)",
+        )
+        await self._execute_strategy(output)
+
+    async def async_stop_discharge(self) -> None:
+        """Stop battery discharge by setting 'Enabled No Discharge' mode."""
+        output = StrategyOutput(
+            status=SystemStatus.HOUSE_FROM_GRID,
+            mode="Enabled No Discharge",
+            reason="Stop discharge",
         )
         await self._execute_strategy(output)
 
     async def async_apply_strategy(self) -> None:
         """Manually trigger strategy evaluation and execution."""
         await self.async_refresh()
+
+    # ── Charge-to-target-SOC ──────────────────────────────────────────
+
+    @property
+    def target_soc(self) -> int:
+        """Return the current target SOC percentage."""
+        return self._target_soc
+
+    @target_soc.setter
+    def target_soc(self, value: int) -> None:
+        """Set the target SOC percentage."""
+        self._target_soc = max(10, min(100, value))
+
+    @property
+    def charge_to_soc_power_w(self) -> int:
+        """Return the charging power in watts for charge-to-SOC."""
+        return self._charge_to_soc_power_w
+
+    @charge_to_soc_power_w.setter
+    def charge_to_soc_power_w(self, value: int) -> None:
+        """Set the charging power in watts for charge-to-SOC."""
+        self._charge_to_soc_power_w = max(100, min(15000, value))
+
+    @property
+    def charge_to_soc_duration_s(self) -> int:
+        """Return the trigger duration in seconds for charge-to-SOC."""
+        return self._charge_to_soc_duration_s
+
+    @charge_to_soc_duration_s.setter
+    def charge_to_soc_duration_s(self, value: int) -> None:
+        """Set the trigger duration in seconds for charge-to-SOC."""
+        self._charge_to_soc_duration_s = max(300, min(86400, value))
+
+    @property
+    def charge_to_soc_status(self) -> str:
+        """Return the current charge-to-SOC status string."""
+        return self._charge_to_soc_status
+
+    @property
+    def charging_to_soc_active(self) -> bool:
+        """Return whether charge-to-SOC is currently in progress."""
+        return self._charging_to_soc_active
+
+    def _get_current_battery_soc(self) -> float | None:
+        """Read the current battery SOC from the configured sensor entity."""
+        soc_entity_id = self.entry.data.get(CONF_BATTERY_SOC)
+        if not soc_entity_id:
+            return None
+        state = self.hass.states.get(soc_entity_id)
+        if state is None or state.state in (STATE_UNAVAILABLE, STATE_UNKNOWN):
+            return None
+        try:
+            return float(state.state)
+        except (ValueError, TypeError):
+            return None
+
+    async def async_charge_to_target_soc(self) -> None:
+        """Start charging from grid and monitor SOC until target is reached."""
+        soc_entity_id = self.entry.data.get(CONF_BATTERY_SOC)
+        if not soc_entity_id:
+            _LOGGER.error("Cannot charge to target SOC: no battery SOC sensor configured")
+            self._charge_to_soc_status = "Error: No SOC sensor"
+            self._sync_charge_to_soc_data()
+            return
+
+        current_soc = self._get_current_battery_soc()
+        if current_soc is not None and current_soc >= self._target_soc:
+            _LOGGER.info(
+                "Battery SOC (%.1f%%) already at or above target (%d%%), skipping",
+                current_soc, self._target_soc,
+            )
+            self._charge_to_soc_status = (
+                f"Already at {current_soc:.0f}% (target {self._target_soc}%)"
+            )
+            self._sync_charge_to_soc_data()
+            return
+
+        # Cancel any existing charge-to-SOC in progress
+        await self.async_cancel_charge_to_soc()
+
+        self._charging_to_soc_active = True
+        self._charge_to_soc_status = f"Charging to {self._target_soc}%"
+        _LOGGER.info(
+            "Starting charge to target SOC %d%% (power=%dW, duration=%ds)",
+            self._target_soc, self._charge_to_soc_power_w, self._charge_to_soc_duration_s,
+        )
+
+        # Use "Enabled Power Control" mode for charge-to-value
+        output = StrategyOutput(
+            status=SystemStatus.CHARGING_TO_SOC,
+            mode="Enabled Power Control",
+            power_w=self._charge_to_soc_power_w,
+            duration_seconds=self._charge_to_soc_duration_s,
+            reason=f"Charge to {self._target_soc}%",
+        )
+        await self._execute_strategy(output)
+        self.record_calendar_event(
+            f"Charging to {self._target_soc}%", self._charge_to_soc_duration_s
+        )
+
+        # Register listener for battery SOC state changes
+        self._soc_listener_unsub = async_track_state_change_event(
+            self.hass,
+            [soc_entity_id],
+            self._handle_soc_state_change,
+        )
+        self._sync_charge_to_soc_data()
+
+    @ha_callback
+    def _handle_soc_state_change(self, event: Event) -> None:
+        """Handle battery SOC state change during charge-to-SOC."""
+        if not self._charging_to_soc_active:
+            return
+
+        new_state = event.data.get("new_state")
+        if new_state is None or new_state.state in (STATE_UNAVAILABLE, STATE_UNKNOWN):
+            return
+
+        try:
+            current_soc = float(new_state.state)
+        except (ValueError, TypeError):
+            return
+
+        _LOGGER.debug(
+            "Charge-to-SOC: current=%.1f%%, target=%d%%",
+            current_soc, self._target_soc,
+        )
+        self._charge_to_soc_status = (
+            f"Charging to {self._target_soc}% (now {current_soc:.0f}%)"
+        )
+
+        if current_soc >= self._target_soc:
+            _LOGGER.info(
+                "Target SOC %d%% reached (current: %.1f%%). Switching to self-use.",
+                self._target_soc, current_soc,
+            )
+            self.hass.async_create_task(self._finish_charge_to_soc(current_soc))
+        else:
+            self._sync_charge_to_soc_data()
+
+    async def _finish_charge_to_soc(self, final_soc: float) -> None:
+        """Stop charging and clean up after target SOC is reached."""
+        await self.async_stop_discharge()
+
+        if self._soc_listener_unsub is not None:
+            self._soc_listener_unsub()
+            self._soc_listener_unsub = None
+
+        self._charging_to_soc_active = False
+        self._charge_to_soc_status = f"Target reached ({final_soc:.0f}%)"
+
+        self.record_calendar_event(f"Charged to {final_soc:.0f}%")
+        self._sync_charge_to_soc_data()
+        _LOGGER.info("Charge-to-SOC completed, now in self-use mode")
+
+    async def async_cancel_charge_to_soc(self) -> None:
+        """Cancel any in-progress charge-to-SOC operation."""
+        if not self._charging_to_soc_active:
+            return
+
+        _LOGGER.info("Cancelling charge-to-SOC")
+        if self._soc_listener_unsub is not None:
+            self._soc_listener_unsub()
+            self._soc_listener_unsub = None
+
+        self._charging_to_soc_active = False
+        self._charge_to_soc_status = "Cancelled"
+        await self.async_stop_discharge()
+        self._sync_charge_to_soc_data()
+
+    def _sync_charge_to_soc_data(self) -> None:
+        """Copy charge-to-SOC state into coordinator data and notify entities."""
+        if self.data is not None:
+            self.data.charge_to_soc_status = self._charge_to_soc_status
+            self.data.charge_to_soc_target = self._target_soc
+            self.data.charge_to_soc_active = self._charging_to_soc_active
+            self.async_set_updated_data(self.data)
+
+    async def _resolve_solax_entity_id(self, configured_id: str) -> str | None:
+        """Resolve Solax entity; match configured id or base/suffix variants."""
+        state = self.hass.states.get(configured_id)
+        if state and state.state not in (STATE_UNAVAILABLE, STATE_UNKNOWN):
+            return configured_id
+        if "." not in configured_id:
+            return None
+        domain, _ = configured_id.split(".", 1)
+        base_id = self._entity_id_strip_suffix(configured_id)
+        result = self.hass.states.async_entity_ids(domain)
+        entity_ids = await result if asyncio.iscoroutine(result) else result
+        for entity_id in entity_ids:
+            s = self.hass.states.get(entity_id)
+            if not s or s.state in (STATE_UNAVAILABLE, STATE_UNKNOWN):
+                continue
+            if entity_id == configured_id or entity_id == base_id:
+                return entity_id
+            stripped = self._entity_id_strip_suffix(entity_id)
+            if stripped == base_id:
+                return entity_id
+        return None

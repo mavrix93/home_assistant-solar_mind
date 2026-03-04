@@ -50,8 +50,14 @@ class SolarMindData:
     """Coordinator data container."""
 
     prices: PriceData = field(default_factory=PriceData)
-    
+    price_mode: str = "spot"
+
     last_update: datetime | None = None
     last_error: str | None = None
-   
+
     generation_forecast: Timeseries[Energy] | None = None
+
+    # Charge-to-SOC feature state
+    charge_to_soc_status: str = "Idle"
+    charge_to_soc_target: int = 80
+    charge_to_soc_active: bool = False

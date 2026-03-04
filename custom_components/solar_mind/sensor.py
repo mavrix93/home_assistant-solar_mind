@@ -156,14 +156,20 @@ def _get_price_attrs(data: SolarMindData) -> dict[str, Any]:
     """Get price attributes."""
     attrs: dict[str, Any] = {
         "tomorrow_available": data.prices.tomorrow_available,
+        "price_mode": data.price_mode,
     }
     attrs["hourly_prices"] = [{"hour": p.start.hour, "price": p.price} for p in data.prices.today]
-    
+
+    if data.price_mode == "fixed":
+        from .mind.fixed_tariff import is_low_tariff
+        now = datetime.now(timezone.utc)
+        attrs["current_tariff"] = "low" if is_low_tariff(now) else "high"
+
     if data.prices.today:
         prices_today = sorted(data.prices.today, key=lambda x: x.price)
         attrs["min_today"] = prices_today[0].price if prices_today else None
         attrs["max_today"] = prices_today[-1].price if prices_today else None
-        
+
         # Current hour rank
         if data.prices.current_price is not None:
             rank = 1
@@ -172,7 +178,7 @@ def _get_price_attrs(data: SolarMindData) -> dict[str, Any]:
                     rank += 1
             attrs["current_rank"] = rank
             attrs["total_hours"] = len(data.prices.today)
-    
+
     return attrs
 
 @dataclass(frozen=True, kw_only=True)
@@ -224,6 +230,18 @@ SENSOR_DESCRIPTIONS: tuple[SolarMindSensorEntityDescription, ...] = (
         icon="mdi:alert-circle-outline",
         entity_registry_enabled_default=False,
         value_fn=_get_last_error,
+    ),
+    # ============ CHARGE-TO-SOC STATUS ============
+    SolarMindSensorEntityDescription(
+        key="charge_to_soc_status",
+        name="Charge to SOC Status",
+        icon="mdi:battery-sync",
+        state_class=None,
+        value_fn=lambda data: data.charge_to_soc_status,
+        attr_fn=lambda data: {
+            "target_soc": data.charge_to_soc_target,
+            "active": data.charge_to_soc_active,
+        },
     ),
     # ============ GENERATION FORECAST (forecast.solar) ============
     SolarMindSensorEntityDescription(

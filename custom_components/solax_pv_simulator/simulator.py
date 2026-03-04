@@ -1,5 +1,4 @@
 """Core simulator logic for Solax PV Simulator (HA integration layer)."""
-from __future__ import annotations
 
 import logging
 from datetime import datetime, timedelta

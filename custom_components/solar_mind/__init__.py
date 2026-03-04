@@ -1,5 +1,4 @@
 """Solar Mind integration for Home Assistant."""
-from __future__ import annotations
 
 import logging
 from typing import Final
@@ -13,7 +12,7 @@ from custom_components.solar_mind.ha.coordinator import SolarMindCoordinator
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
-PLATFORMS: Final[list[Platform]] = [Platform.SENSOR, Platform.BUTTON, Platform.CALENDAR]
+PLATFORMS: Final[list[Platform]] = [Platform.SENSOR, Platform.BUTTON, Platform.CALENDAR, Platform.NUMBER]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:

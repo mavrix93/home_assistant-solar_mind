@@ -1,5 +1,4 @@
 """Config flow for Solax PV Simulator integration."""
-from __future__ import annotations
 
 import logging
 from typing import Any

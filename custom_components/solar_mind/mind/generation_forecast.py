@@ -15,8 +15,7 @@ class ForecastSolarApiGenerationForecast:
     def __init__(self, latitude: float, longitude: float, azimuth: float, tilt: float, max_peak_power_kw: float = 10.0):
         self.latitude = latitude
         self.longitude = longitude
-        # Convert HA azimuth (0-360, 0=North) to forecast.solar (-180..180, 0=South)
-        self.azimuth = azimuth - 180
+        self.azimuth = azimuth
         self.declination = tilt
         self.max_peak_power_kw = max_peak_power_kw
 

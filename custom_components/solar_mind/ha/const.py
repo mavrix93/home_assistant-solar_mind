@@ -12,8 +12,18 @@ CONF_BATTERY_EFFICIENCY: Final = "battery_efficiency"
 CONF_PV_AZIMUTH: Final = "pv_azimuth"
 CONF_PV_TILT: Final = "pv_tilt"
 
+CONF_PRICE_MODE: Final = "price_mode"
 CONF_PRICE_SENSOR: Final = "price_sensor"
 CONF_PRICE_SOURCE: Final = "price_source"
+CONF_FIXED_HIGH_PRICE: Final = "fixed_high_price"
+CONF_FIXED_LOW_PRICE: Final = "fixed_low_price"
+
+
+class PriceMode(StrEnum):
+    """Pricing mode selection."""
+
+    SPOT = "spot"
+    FIXED = "fixed"
 
 CONF_REMOTECONTROL_POWER_CONTROL: Final = "remotecontrol_power_control"
 CONF_REMOTECONTROL_ACTIVE_POWER: Final = "remotecontrol_active_power"
@@ -21,7 +31,6 @@ CONF_REMOTECONTROL_TRIGGER: Final = "remotecontrol_trigger"
 
 # Solax entity config keys
 CONF_SOLAX_DEVICE_TYPE: Final = "solax_device_type"
-CONF_ENERGY_STORAGE_MODE: Final = "energy_storage_mode"
 CONF_REMOTECONTROL_POWER_CONTROL: Final = "remotecontrol_power_control"
 CONF_REMOTECONTROL_ACTIVE_POWER: Final = "remotecontrol_active_power"
 CONF_REMOTECONTROL_TRIGGER: Final = "remotecontrol_trigger"
@@ -33,6 +42,7 @@ class SystemStatus(StrEnum):
     """System status values."""
 
     CHARGING = "charging"
+    CHARGING_TO_SOC = "charging_to_soc"
     DISCHARGING = "discharging"
     SELF_USE = "self_use"
     HOUSE_FROM_GRID = "house_from_grid"

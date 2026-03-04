@@ -22,6 +22,7 @@ SERVICE_SET_HOUSE_FROM_GRID = "set_house_use_grid"
 
 SERVICE_SET_BATTERY_FOR_HOUSE = "set_battery_for_house"
 SERVICE_APPLY_STRATEGY = "apply_strategy"
+SERVICE_CHARGE_TO_VALUE = "charge_to_value"
 # Service schemas
 SCHEMA_CHARGE = vol.Schema(
     {
@@ -32,6 +33,14 @@ SCHEMA_CHARGE = vol.Schema(
 
 SCHEMA_DISCHARGE = vol.Schema(
     {
+        vol.Optional("power_w"): cv.positive_int,
+        vol.Optional("duration_seconds"): cv.positive_int,
+    }
+)
+
+SCHEMA_CHARGE_TO_VALUE = vol.Schema(
+    {
+        vol.Optional("target_soc"): vol.All(vol.Coerce(int), vol.Range(min=10, max=100)),
         vol.Optional("power_w"): cv.positive_int,
         vol.Optional("duration_seconds"): cv.positive_int,
     }
@@ -127,11 +136,36 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         if coordinator is None:
             _LOGGER.error("No Solar Mind coordinator found")
             return
-        
+
         _LOGGER.info("Service call: apply strategy")
         await coordinator.async_apply_strategy()
 
+    async def handle_charge_to_value(call: ServiceCall) -> None:
+        """Handle charge to value (target SOC) service call."""
+        coordinator = await _get_coordinator()
+        if coordinator is None:
+            _LOGGER.error("No Solar Mind coordinator found")
+            return
 
+        target_soc = call.data.get("target_soc")
+        power_w = call.data.get("power_w")
+        duration_seconds = call.data.get("duration_seconds")
+
+        if target_soc is not None:
+            coordinator.target_soc = target_soc
+        if power_w is not None:
+            coordinator.charge_to_soc_power_w = power_w
+        if duration_seconds is not None:
+            coordinator.charge_to_soc_duration_s = duration_seconds
+
+        _LOGGER.info(
+            "Service call: charge to value (target_soc=%s, power=%s, duration=%s)",
+            coordinator.target_soc,
+            coordinator.charge_to_soc_power_w,
+            coordinator.charge_to_soc_duration_s,
+        )
+
+        await coordinator.async_charge_to_target_soc()
 
 
     # Register services (only if not already registered)
@@ -181,4 +215,12 @@ async def async_setup_services(hass: HomeAssistant) -> None:
             SERVICE_APPLY_STRATEGY,
             handle_apply_strategy,
             schema=SCHEMA_EMPTY,
+        )
+
+    if not hass.services.has_service(DOMAIN, SERVICE_CHARGE_TO_VALUE):
+        hass.services.async_register(
+            DOMAIN,
+            SERVICE_CHARGE_TO_VALUE,
+            handle_charge_to_value,
+            schema=SCHEMA_CHARGE_TO_VALUE,
         )

@@ -60,6 +60,7 @@ class SolarMindCalendar(CoordinatorEntity[SolarMindCoordinator], CalendarEntity)
             model="Energy Optimizer",
             entry_type=DeviceEntryType.SERVICE,
         )
+        coordinator.calendar = self
         self._events: list[CalendarEvent] = [
             CalendarEvent(
                 uid="1",
@@ -102,6 +103,26 @@ class SolarMindCalendar(CoordinatorEntity[SolarMindCoordinator], CalendarEntity)
             e for e in self._events
             if e.end > start_date and e.start < end_date
         ]
+
+    def add_event(
+        self,
+        summary: str,
+        start: datetime.datetime,
+        end: datetime.datetime,
+        description: str | None = None,
+    ) -> None:
+        """Add an event programmatically (called from coordinator)."""
+        event = CalendarEvent(
+            uid=str(self._next_uid),
+            summary=summary,
+            start=start,
+            end=end,
+            description=description,
+        )
+        self._next_uid += 1
+        self._events.append(event)
+        _LOGGER.debug("Recorded calendar event: %s", event)
+        self.async_write_ha_state()
 
     async def async_create_event(self, **kwargs: Any) -> None:
         """Create a calendar event."""

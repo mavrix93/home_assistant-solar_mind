@@ -1,6 +1,6 @@
 # Documentation for Home Assistant Developers
 
-This document is aimed at **senior Python developers** who are new to the Home Assistant integration ecosystem. It explains how custom components work in Home Assistant, how this project is structured, the entities and concepts used, and how solar PV/battery systems and Solax inverters fit in—so you can extend or maintain the codebase with confidence.
+This document explains how custom components work in Home Assistant, how this project is structured, the entities and concepts used, and how solar PV/battery systems and Solax inverters fit in—so you can extend or maintain the codebase with confidence.
 
 ---
 

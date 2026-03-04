@@ -1,5 +1,4 @@
 """Sensor entities for Solax PV Simulator."""
-from __future__ import annotations
 
 import logging
 from dataclasses import dataclass

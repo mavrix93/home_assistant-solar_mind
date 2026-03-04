@@ -1,5 +1,4 @@
 """Constants for the Solax PV Simulator integration."""
-from __future__ import annotations
 
 from enum import StrEnum
 from typing import Final

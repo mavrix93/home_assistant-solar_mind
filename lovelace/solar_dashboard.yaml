@@ -1,0 +1,506 @@
+# =============================================================================
+# Solar PV Dashboard — ApexCharts Cards
+# Requires: https://github.com/RomRider/apexcharts-card (HACS)
+#
+# Usage: Copy individual cards into your Lovelace dashboard YAML or
+#        use the HA UI editor → Manual Card → paste the YAML.
+# =============================================================================
+
+# ---------------------------------------------------------------------------
+# 1. REAL-TIME POWER FLOW  (stacked area — PV vs Load vs Battery)
+# ---------------------------------------------------------------------------
+# Shows live power flows over the last 6 hours with 1-minute granularity.
+
+type: custom:apexcharts-card
+header:
+  show: true
+  title: "Real-Time Power Flow"
+  show_states: true
+  colorize_states: true
+graph_span: 6h
+update_interval: 1min
+yaxis:
+  - id: power
+    apex_config:
+      title:
+        text: "W"
+apex_config:
+  chart:
+    height: 320px
+  stroke:
+    width: 2
+    curve: smooth
+  fill:
+    type: gradient
+    gradient:
+      shadeIntensity: 0.1
+      opacityFrom: 0.5
+      opacityTo: 0.1
+  tooltip:
+    x:
+      format: "HH:mm"
+  legend:
+    show: true
+    position: bottom
+series:
+  - entity: sensor.solax_pv_power_total
+    name: "PV Generation"
+    type: area
+    color: "#F7B731"
+    yaxis_id: power
+    group_by:
+      func: avg
+      duration: 1min
+  - entity: sensor.solax_house_load
+    name: "House Load"
+    type: area
+    color: "#3867D6"
+    yaxis_id: power
+    group_by:
+      func: avg
+      duration: 1min
+  - entity: sensor.solax_battery_power_charge
+    name: "Battery (+ charge / − discharge)"
+    type: area
+    color: "#20BF6B"
+    yaxis_id: power
+    group_by:
+      func: avg
+      duration: 1min
+
+---
+# ---------------------------------------------------------------------------
+# 2. BATTERY STATE OF CHARGE (gauge-style area)
+# ---------------------------------------------------------------------------
+
+type: custom:apexcharts-card
+header:
+  show: true
+  title: "Battery SoC"
+  show_states: true
+  colorize_states: true
+graph_span: 24h
+yaxis:
+  - id: soc
+    min: 0
+    max: 100
+    apex_config:
+      title:
+        text: "%"
+      tickAmount: 5
+apex_config:
+  chart:
+    height: 250px
+  stroke:
+    width: 3
+    curve: smooth
+  fill:
+    type: gradient
+    gradient:
+      shadeIntensity: 0.2
+      opacityFrom: 0.6
+      opacityTo: 0.1
+series:
+  - entity: sensor.solax_battery_capacity
+    name: "SoC"
+    type: area
+    color: "#20BF6B"
+    yaxis_id: soc
+    group_by:
+      func: avg
+      duration: 5min
+
+---
+# ---------------------------------------------------------------------------
+# 3. TODAY'S ENERGY SUMMARY (radialBar — independent gauges)
+# ---------------------------------------------------------------------------
+# Each ring is an independent metric scaled to its own max.
+# These values are NOT additive — radialBar avoids the misleading
+# "parts of a whole" implication that pie/donut charts create.
+
+type: custom:apexcharts-card
+header:
+  show: true
+  title: "Today's Energy Summary"
+  show_states: true
+  colorize_states: true
+chart_type: radialBar
+apex_config:
+  chart:
+    height: 320px
+  plotOptions:
+    radialBar:
+      hollow:
+        size: "30%"
+      track:
+        background: "#333"
+      dataLabels:
+        name:
+          fontSize: "12px"
+        value:
+          fontSize: "14px"
+          formatter: |
+            EVAL:function(val) { return val.toFixed(1) + ' kWh'; }
+        total:
+          show: true
+          label: "PV Generated"
+          formatter: |
+            EVAL:function(w) { return w.globals.seriesTotals[0].toFixed(1) + ' kWh'; }
+  legend:
+    show: true
+    position: bottom
+series:
+  - entity: sensor.solax_today_s_solar_energy
+    name: "PV Generated"
+    color: "#F7B731"
+    max: 30
+    show:
+      in_header: true
+  - entity: sensor.solax_energy_dashboard_solax_home_consumption_energy
+    name: "Home Consumed"
+    color: "#3867D6"
+    max: 30
+    show:
+      in_header: true
+  - entity: sensor.solax_energy_dashboard_solax_grid_import_energy
+    name: "Grid Import"
+    color: "#EB3B5A"
+    max: 30
+    show:
+      in_header: true
+  - entity: sensor.solax_battery_input_energy_today
+    name: "Battery Charged"
+    color: "#20BF6B"
+    max: 20
+    show:
+      in_header: true
+  - entity: sensor.solax_battery_output_energy_today
+    name: "Battery Discharged"
+    color: "#FA8231"
+    max: 20
+    show:
+      in_header: true
+
+---
+# ---------------------------------------------------------------------------
+# 4. PV GENERATION — FULL DAY CURVE
+# ---------------------------------------------------------------------------
+# Area chart of PV generation from midnight to now, good for comparing
+# production shape day-over-day.
+
+type: custom:apexcharts-card
+header:
+  show: true
+  title: "PV Generation Today"
+  show_states: true
+  colorize_states: true
+graph_span: 1d
+span:
+  start: day
+yaxis:
+  - id: power
+    min: 0
+    apex_config:
+      title:
+        text: "W"
+  - id: energy
+    opposite: true
+    min: 0
+    apex_config:
+      title:
+        text: "kWh"
+apex_config:
+  chart:
+    height: 280px
+  stroke:
+    width: 2
+    curve: smooth
+  fill:
+    type: gradient
+    gradient:
+      shadeIntensity: 0.1
+      opacityFrom: 0.7
+      opacityTo: 0.1
+  annotations:
+    yaxis:
+      - y: 0
+        borderColor: "#999"
+        strokeDashArray: 4
+series:
+  - entity: sensor.solax_pv_power_total
+    name: "PV Power"
+    type: area
+    color: "#F7B731"
+    yaxis_id: power
+    group_by:
+      func: avg
+      duration: 5min
+    show:
+      extremas: true
+  - entity: sensor.solax_today_s_solar_energy
+    name: "Total Generated"
+    type: line
+    color: "#45AAF2"
+    yaxis_id: energy
+    group_by:
+      func: last
+      duration: 5min
+    stroke_width: 2
+    show:
+      in_header: true
+
+---
+# ---------------------------------------------------------------------------
+# 5. PV vs LOAD — OVERLAY (see surplus / deficit at a glance)
+# ---------------------------------------------------------------------------
+
+type: custom:apexcharts-card
+header:
+  show: true
+  title: "PV vs House Load"
+  show_states: true
+  colorize_states: true
+graph_span: 1d
+span:
+  start: day
+yaxis:
+  - id: power
+    min: 0
+    apex_config:
+      title:
+        text: "W"
+apex_config:
+  chart:
+    height: 300px
+  stroke:
+    width: 2
+    curve: smooth
+  fill:
+    type: gradient
+    gradient:
+      shadeIntensity: 0.1
+      opacityFrom: 0.4
+      opacityTo: 0.05
+  tooltip:
+    x:
+      format: "HH:mm"
+series:
+  - entity: sensor.solax_pv_power_total
+    name: "PV Generation"
+    type: area
+    color: "#F7B731"
+    yaxis_id: power
+    group_by:
+      func: avg
+      duration: 5min
+  - entity: sensor.solax_house_load
+    name: "House Load"
+    type: area
+    color: "#3867D6"
+    yaxis_id: power
+    group_by:
+      func: avg
+      duration: 5min
+
+---
+# ---------------------------------------------------------------------------
+# 6. BATTERY CHARGE / DISCHARGE FLOW
+# ---------------------------------------------------------------------------
+# Positive = charging, negative = discharging. Uses a bar chart to clearly
+# show direction.
+
+type: custom:apexcharts-card
+header:
+  show: true
+  title: "Battery Charge / Discharge"
+  show_states: true
+  colorize_states: true
+graph_span: 1d
+span:
+  start: day
+yaxis:
+  - id: power
+    apex_config:
+      title:
+        text: "W"
+apex_config:
+  chart:
+    height: 280px
+  stroke:
+    width: 0
+  plotOptions:
+    bar:
+      borderRadius: 2
+      columnWidth: "80%"
+  tooltip:
+    x:
+      format: "HH:mm"
+  annotations:
+    yaxis:
+      - y: 0
+        borderColor: "#999"
+        label:
+          text: "0 W"
+          position: left
+series:
+  - entity: sensor.solax_battery_power_charge
+    name: "Battery Flow"
+    type: column
+    color: "#20BF6B"
+    yaxis_id: power
+    group_by:
+      func: avg
+      duration: 10min
+    color_threshold:
+      - value: -1
+        color: "#EB3B5A"
+      - value: 0
+        color: "#20BF6B"
+
+---
+# ---------------------------------------------------------------------------
+# 7. SELF-SUFFICIENCY DONUT (how much of load is covered by PV + battery)
+# ---------------------------------------------------------------------------
+# Uses today's totals. Grid import shows what came from grid;
+# the rest (consumption − grid import) came from PV/battery.
+
+type: custom:apexcharts-card
+header:
+  show: true
+  title: "Self-Sufficiency Today"
+chart_type: donut
+apex_config:
+  chart:
+    height: 280px
+  legend:
+    show: true
+    position: bottom
+  plotOptions:
+    pie:
+      donut:
+        labels:
+          show: true
+          name:
+            show: true
+          total:
+            show: true
+            label: "Total"
+            formatter: |
+              EVAL:function(w) {
+                var total = w.globals.seriesTotals.reduce(function(a,b){return a+b},0);
+                return total.toFixed(1) + ' kWh';
+              }
+series:
+  - entity: sensor.solax_energy_dashboard_solax_home_consumption_energy
+    name: "Self-Consumed (PV+Bat)"
+    color: "#20BF6B"
+    show:
+      in_header: true
+    data_generator: |
+      const consumption = parseFloat(entity.state) || 0;
+      const grid = parseFloat(hass.states['sensor.solax_energy_dashboard_solax_grid_import_energy'].state) || 0;
+      const self_consumed = Math.max(consumption - grid, 0);
+      return [[0, self_consumed]];
+  - entity: sensor.solax_energy_dashboard_solax_grid_import_energy
+    name: "Grid Import"
+    color: "#EB3B5A"
+    show:
+      in_header: true
+
+---
+# ---------------------------------------------------------------------------
+# 8. GRID COST — Tariff background + house load overlay
+# ---------------------------------------------------------------------------
+# Price shown as a stepped area (low opacity, color-thresholded) to act as
+# a colored background. House load plotted on top on a separate axis.
+# Header: current price, house load, estimated daily grid cost.
+
+
+type: custom:apexcharts-card
+header:
+  show: true
+  title: "Grid Cost Today"
+  show_states: true
+  colorize_states: true
+graph_span: 1d
+span:
+  start: day
+now:
+  show: true
+  color: var(--primary-color)
+  label: Now
+experimental:
+  color_threshold: true
+yaxis:
+  - id: price
+    show: false
+    min: 0
+    max: 1
+  - id: power
+    min: 0
+    apex_config:
+      title:
+        text: "W"
+apex_config:
+  chart:
+    height: 350px
+  plotOptions:
+    bar:
+      columnWidth: "100%"
+  xaxis:
+    type: datetime
+    labels:
+      format: "HH:mm"
+      datetimeUTC: false
+  tooltip:
+    x:
+      format: "HH:00"
+  legend:
+    show: true
+    position: bottom
+series:
+  # --- Price as colored background columns (full-height, low opacity) ---
+  - entity: sensor.solar_mind_current_price
+    name: "Price"
+    type: column
+    float_precision: 2
+    unit: " CZK/kWh"
+    yaxis_id: price
+    opacity: 0.25
+    data_generator: |
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const now = new Date();
+      const prices = entity.attributes.hourly_prices || [];
+      return prices
+        .filter(function(item) { return item.hour <= now.getHours(); })
+        .map(function(item) {
+          const date = new Date(today);
+          date.setHours(item.hour);
+          return [date.getTime(), item.price];
+        });
+    color_threshold:
+      - value: 0
+        color: "#4CAF50"
+      - value: 2
+        color: "#8BC34A"
+      - value: 3
+        color: "#FFC107"
+      - value: 4
+        color: "#FF9800"
+      - value: 5
+        color: "#F44336"
+    show:
+      in_header: raw
+      legend_value: false
+  # --- House load (line on top) ---
+  - entity: sensor.energy_grid_solax_grid_import_solax_grid_export_net_power
+    name: "Grid Consumption"
+    type: line
+    color: "#3867D6"
+    yaxis_id: power
+    stroke_width: 2
+    group_by:
+      func: avg
+      duration: 5min
+    show:
