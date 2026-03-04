@@ -84,6 +84,9 @@ def hass_mock():
     hass.services.async_register = MagicMock()
     hass.states = MagicMock()
     hass.config_entries = MagicMock()
+    hass.config.time_zone = "Europe/Prague"
+    hass.config.latitude = 50.0
+    hass.config.longitude = 14.4
     return hass
 
 
@@ -95,28 +98,17 @@ def config_entry_mock():
     entry.title = "Test Solar Mind"
     entry.data = {
         "name": "Test Solar Mind",
-        "solax_device_type": "modbus_remote",
+        "pv_azimuth": 180,
+        "pv_tilt": 35,
+        "max_pv_power": 5000,
+        "price_mode": "spot",
+        "price_sensor": "sensor.spot_price",
         "remotecontrol_power_control": "select.solax_remotecontrol_power_control",
         "remotecontrol_active_power": "number.solax_remotecontrol_active_power",
         "remotecontrol_trigger": "button.solax_remotecontrol_trigger",
         "battery_soc": "sensor.solax_battery_soc",
-        "price_sensor": "sensor.spot_price",
-        "price_source": "czech_ote",
     }
-    entry.options = {
-        "charge_price_threshold": 0.05,
-        "discharge_price_threshold": 0.15,
-        "min_soc": 10,
-        "max_soc": 95,
-        "max_charge_power": 3000,
-        "max_discharge_power": 3000,
-        "charge_window_start": 22,
-        "charge_window_end": 6,
-        "discharge_allowed": False,
-        "update_interval": 5,
-        "autorepeat_duration": 3600,
-        "fallback_strategy": "spot_price_weather",
-    }
+    entry.options = {}
     return entry
 
 
@@ -207,84 +199,3 @@ def make_weather_forecast():
         ]
     
     return _make_forecast
-
-
-# --- Strategy test fixtures (for test_strategies.py) ---
-
-
-@pytest.fixture
-def strategy_options() -> dict:
-    """Default strategy options for tests."""
-    from custom_components.solar_mind.const import (
-        CONF_AUTOREPEAT_DURATION,
-        CONF_CHARGE_PRICE_THRESHOLD,
-        CONF_CHARGE_WINDOW_END,
-        CONF_CHARGE_WINDOW_START,
-        CONF_DISCHARGE_ALLOWED,
-        CONF_DISCHARGE_PRICE_THRESHOLD,
-        CONF_MAX_CHARGE_POWER,
-        CONF_MAX_DISCHARGE_POWER,
-        CONF_MAX_SOC,
-        CONF_MIN_SOC,
-        DEFAULT_AUTOREPEAT_DURATION,
-        DEFAULT_CHARGE_PRICE_THRESHOLD,
-        DEFAULT_CHARGE_WINDOW_END,
-        DEFAULT_CHARGE_WINDOW_START,
-        DEFAULT_DISCHARGE_ALLOWED,
-        DEFAULT_DISCHARGE_PRICE_THRESHOLD,
-        DEFAULT_MAX_CHARGE_POWER,
-        DEFAULT_MAX_DISCHARGE_POWER,
-        DEFAULT_MAX_SOC,
-        DEFAULT_MIN_SOC,
-    )
-    return {
-        CONF_CHARGE_PRICE_THRESHOLD: DEFAULT_CHARGE_PRICE_THRESHOLD,
-        CONF_DISCHARGE_PRICE_THRESHOLD: DEFAULT_DISCHARGE_PRICE_THRESHOLD,
-        CONF_CHARGE_WINDOW_START: DEFAULT_CHARGE_WINDOW_START,
-        CONF_CHARGE_WINDOW_END: DEFAULT_CHARGE_WINDOW_END,
-        CONF_MIN_SOC: DEFAULT_MIN_SOC,
-        CONF_MAX_SOC: DEFAULT_MAX_SOC,
-        CONF_MAX_CHARGE_POWER: DEFAULT_MAX_CHARGE_POWER,
-        CONF_MAX_DISCHARGE_POWER: DEFAULT_MAX_DISCHARGE_POWER,
-        CONF_DISCHARGE_ALLOWED: DEFAULT_DISCHARGE_ALLOWED,
-        CONF_AUTOREPEAT_DURATION: DEFAULT_AUTOREPEAT_DURATION,
-    }
-
-
-@pytest.fixture
-def strategy_input(strategy_options: dict):
-    """Build a StrategyInput for tests."""
-    from custom_components.solar_mind.models import (
-        HourlyPrice,
-        PriceData,
-        SolaxState,
-        StrategyInput,
-        WeatherForecast,
-    )
-
-    today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
-    today_prices = [
-        HourlyPrice(start=today.replace(hour=h), price=0.10 + (h % 3) * 0.02)
-        for h in range(24)
-    ]
-    today_prices[2] = HourlyPrice(start=today.replace(hour=2), price=0.03)
-    today_prices[3] = HourlyPrice(start=today.replace(hour=3), price=0.04)
-    today_prices[22] = HourlyPrice(start=today.replace(hour=22), price=0.02)
-    today_prices[23] = HourlyPrice(start=today.replace(hour=23), price=0.025)
-
-    prices = PriceData(
-        today=today_prices,
-        tomorrow=[],
-        current_price=0.05,
-        tomorrow_available=False,
-    )
-    weather = WeatherForecast(hourly=[], daily=[])
-    solax_state = SolaxState(battery_soc=50.0)
-
-    return StrategyInput(
-        current_time=datetime.now(),
-        prices=prices,
-        weather=weather,
-        solax_state=solax_state,
-        options=strategy_options,
-    )

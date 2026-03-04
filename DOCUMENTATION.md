@@ -1,6 +1,6 @@
 # Documentation for Home Assistant Developers
 
-This document explains how custom components work in Home Assistant, how this project is structured, the entities and concepts used, and how solar PV/battery systems and Solax inverters fit in—so you can extend or maintain the codebase with confidence.
+This document is aimed at **senior Python developers** who are new to the Home Assistant integration ecosystem. It explains how custom components work in Home Assistant, how this project is structured, the entities and concepts used, and how solar PV/battery systems and Solax inverters fit in—so you can extend or maintain the codebase with confidence.
 
 ---
 
@@ -13,15 +13,12 @@ This document explains how custom components work in Home Assistant, how this pr
 5. [Solar Plant and Inverter Concepts](#5-solar-plant-and-inverter-concepts)
 6. [Solax Entities: What They Are and What They Do](#6-solax-entities-what-they-are-and-what-they-do)
 7. [How Solar Charging Works in This Project](#7-how-solar-charging-works-in-this-project)
-8. [Decision Flow Charts](#8-decision-flow-charts)
-9. [Dashboard and Custom Cards](#9-dashboard-and-custom-cards)
-10. [Events System](#10-events-system)
-11. [User Preferences and Away Periods](#11-user-preferences-and-away-periods)
-12. [System Health Monitoring](#12-system-health-monitoring)
-13. [Milestones and Recommendations](#13-milestones-and-recommendations)
-14. [Historical Data and Learning](#14-historical-data-and-learning)
-15. [New Services Reference](#15-new-services-reference)
-16. [Further Reading](#16-further-reading)
+8. [Pricing Modes](#8-pricing-modes)
+9. [Generation Forecasting](#9-generation-forecasting)
+10. [Charge-to-Target-SOC Feature](#10-charge-to-target-soc-feature)
+11. [Calendar Integration](#11-calendar-integration)
+12. [Services Reference](#12-services-reference)
+13. [Further Reading](#13-further-reading)
 
 ---
 
@@ -29,14 +26,14 @@ This document explains how custom components work in Home Assistant, how this pr
 
 ### What is a custom integration?
 
-A **custom integration** (or “custom component”) is a Python package that lives under `config/custom_components/<domain>/` and is loaded by Home Assistant at startup. It can:
+A **custom integration** (or "custom component") is a Python package that lives under `config/custom_components/<domain>/` and is loaded by Home Assistant at startup. It can:
 
 - Add new **integrations** (configured via UI or YAML)
-- Expose **entities** (sensors, switches, numbers, selects, buttons, etc.)
+- Expose **entities** (sensors, switches, numbers, selects, buttons, calendars, etc.)
 - Register **services** that automations and scripts can call
-- Use **config entries** (stored configuration per “instance” of the integration)
+- Use **config entries** (stored configuration per "instance" of the integration)
 
-The **domain** is a short, unique identifier (e.g. `solar_mind`, `solax_pv_simulator`). All entities from that integration are typically prefixed by the domain (e.g. `sensor.solar_mind_status`).
+The **domain** is a short, unique identifier (e.g. `solar_mind`, `solax_pv_simulator`). All entities from that integration are typically prefixed by the domain (e.g. `sensor.solar_mind_current_price`).
 
 ### Manifest: identity and requirements
 
@@ -65,7 +62,7 @@ Example from this project (`solar_mind/manifest.json`):
   "config_flow": true,
   "iot_class": "local_polling",
   "integration_type": "hub",
-  "after_dependencies": ["input_select"]
+  "after_dependencies": ["input_select", "open_meteo", "cz_energy_spot_prices", "solax_pv_simulator"]
 }
 ```
 
@@ -76,7 +73,7 @@ Example from this project (`solar_mind/manifest.json`):
 Home Assistant looks for:
 
 - `async_setup(hass, config)` — called when the integration is loaded (e.g. from `configuration.yaml` or when first used). Used to set up the domain and optionally register handlers.
-- `async_setup_entry(hass, entry)` — called for **each config entry** (one “instance” of the integration). Here you create your coordinator/simulator, store it in `hass.data[DOMAIN][entry.entry_id]`, and forward setup to **platforms** (sensor, number, etc.).
+- `async_setup_entry(hass, entry)` — called for **each config entry** (one "instance" of the integration). Here you create your coordinator/simulator, store it in `hass.data[DOMAIN][entry.entry_id]`, and forward setup to **platforms** (sensor, number, button, calendar, etc.).
 
 Unload is done in `async_unload_entry`: tear down platforms and remove the entry from `hass.data`.
 
@@ -84,19 +81,19 @@ Unload is done in `async_unload_entry`: tear down platforms and remove the entry
 
 ### Config flow (UI setup)
 
-If `config_flow: true`, users add the integration via **Settings → Devices & Services → Add Integration**. The flow is implemented in `config_flow.py` by a class that subclasses `config_entries.ConfigFlow` and implements steps like `async_step_user`, `async_step_xxx`. Each step can show a form (`async_show_form`) or create the config entry (`async_create_entry`). Data is stored in the **config entry** (`entry.data`, `entry.options`); options can be changed later via the integration’s “Configure” dialog.
+If `config_flow: true`, users add the integration via **Settings → Devices & Services → Add Integration**. The flow is implemented in `config_flow.py` by a class that subclasses `config_entries.ConfigFlow` and implements steps like `async_step_user`, `async_step_xxx`. Each step can show a form (`async_show_form`) or create the config entry (`async_create_entry`). Data is stored in the **config entry** (`entry.data`, `entry.options`); options can be changed later via the integration's "Configure" dialog.
 
 **Official reference:** [Config entries and config flow](https://developers.home-assistant.io/docs/config_entries_config_flow_handler)
 
 ### Platforms and entities
 
-A **platform** is a module that adds one type of entity: `sensor`, `number`, `select`, `button`, etc. In `__init__.py`, after creating the “hub” (coordinator or simulator), we call:
+A **platform** is a module that adds one type of entity: `sensor`, `number`, `select`, `button`, `calendar`, etc. In `__init__.py`, after creating the "hub" (coordinator or simulator), we call:
 
 ```python
 await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 ```
 
-where `PLATFORMS` is e.g. `[Platform.SENSOR]`. For each platform, Home Assistant loads `sensor.py` (or `number.py`, etc.) and calls:
+where `PLATFORMS` is e.g. `[Platform.SENSOR, Platform.BUTTON, Platform.CALENDAR, Platform.NUMBER]`. For each platform, Home Assistant loads `sensor.py` (or `number.py`, etc.) and calls:
 
 ```python
 async def async_setup_entry(hass, entry, async_add_entities):
@@ -104,14 +101,14 @@ async def async_setup_entry(hass, entry, async_add_entities):
     async_add_entities(entities)
 ```
 
-So the integration creates entity instances and passes them to HA; HA then registers them in the entity registry and shows them in the UI. Entities are identified by `entity_id` (e.g. `sensor.solar_mind_status`) and, for stability, by `unique_id` (e.g. `{entry_id}_{sensor_key}`).
+So the integration creates entity instances and passes them to HA; HA then registers them in the entity registry and shows them in the UI. Entities are identified by `entity_id` (e.g. `sensor.solar_mind_current_price`) and, for stability, by `unique_id` (e.g. `{entry_id}_{sensor_key}`).
 
 **Official reference:** [Integration platforms](https://developers.home-assistant.io/docs/creating_platform_index)
 
 ### Data flow: coordinator vs direct updates
 
-- **DataUpdateCoordinator:** One place fetches data on an interval; entities subscribe to the coordinator and get the same data. Good for shared, periodic updates (e.g. price + weather + Solax state).
-- **Direct updates:** The “hub” (e.g. simulator) holds state and notifies listeners when it changes; entities register a callback and call `async_write_ha_state()` when notified.
+- **DataUpdateCoordinator:** One place fetches data on an interval; entities subscribe to the coordinator and get the same data. Good for shared, periodic updates (e.g. price + forecast data).
+- **Direct updates:** The "hub" (e.g. simulator) holds state and notifies listeners when it changes; entities register a callback and call `async_write_ha_state()` when notified.
 
 This project uses **SolarMindCoordinator** (DataUpdateCoordinator) for Solar Mind and **SolaxSimulator** (custom object with listeners) for the Solax PV Simulator.
 
@@ -128,14 +125,17 @@ Custom integrations can register **services** under their domain (e.g. `solar_mi
 | Concept | Where used | Link / note |
 |--------|-------------|-------------|
 | **Config entry** | `config_flow.py`, `__init__.py`, coordinator, platforms | `ConfigEntry` holds `entry_id`, `data`, `options` |
-| **DataUpdateCoordinator** | `solar_mind/coordinator.py` | [Fetching data](https://developers.home-assistant.io/docs/integration_fetching_data) |
-| **CoordinatorEntity** | `solar_mind/sensor.py` | Entities that take data from coordinator |
+| **DataUpdateCoordinator** | `solar_mind/ha/coordinator.py` | [Fetching data](https://developers.home-assistant.io/docs/integration_fetching_data) |
+| **CoordinatorEntity** | `solar_mind/sensor.py`, `button.py`, `number.py`, `calendar.py` | Entities that take data from coordinator |
 | **SensorEntity, SensorEntityDescription** | `solar_mind/sensor.py`, `solax_pv_simulator/sensor.py` | [Sensor](https://developers.home-assistant.io/docs/core/entity/sensor/) |
+| **NumberEntity, ButtonEntity, CalendarEntity** | Solar Mind platforms | Number / Button / Calendar platforms |
 | **SelectEntity, NumberEntity, ButtonEntity** | Solax simulator | Select / Number / Button platforms |
-| **DeviceInfo** | All entity modules | Ties entities to a “device” in the device registry |
+| **DeviceInfo** | All entity modules | Ties entities to a "device" in the device registry |
 | **EntitySelector, selector.NumberSelector** | `config_flow.py` | UI for choosing entities or numeric options in config flow |
 | **hass.states.get(entity_id)** | Coordinator | Read current state of any entity |
 | **hass.services.async_call(domain, service, data)** | Coordinator, services | Call HA services (e.g. `select.select_option`, `number.set_value`, `button.press`) |
+| **async_track_state_change_event** | Coordinator (charge-to-SOC) | Listen for entity state changes |
+| **async_track_time_change** | Coordinator | Schedule actions at specific times |
 
 Other useful docs:
 
@@ -148,17 +148,25 @@ Other useful docs:
 
 ```
 custom_components/
-├── solar_mind/           # Optimization logic: when to charge/discharge from grid
-│   ├── __init__.py       # Entry point, setup_entry, platforms, services
-│   ├── config_flow.py    # UI setup and options
-│   ├── const.py          # Domain, config keys, defaults, enums (StrategyKey, SystemStatus, Solax modes)
-│   ├── coordinator.py    # DataUpdateCoordinator: fetch prices/weather/Solax, run strategy, execute Solax
-│   ├── models.py         # PriceData, SolaxState, StrategyInput/Output, SolarMindData
-│   ├── price_adapter.py  # Normalize Czech OTE / Nord Pool / generic price sensors
-│   ├── sensor.py         # Solar Mind sensor platform (status, price, strategy, etc.)
-│   ├── services.py       # Register and handle solar_mind.* services
+├── solar_mind/           # Main integration: price monitoring, forecasting, Solax control
+│   ├── __init__.py       # Entry point, setup_entry, platforms (SENSOR, BUTTON, CALENDAR, NUMBER)
+│   ├── config_flow.py    # UI setup (name, PV config, Solax entities, pricing mode, etc.)
+│   ├── sensor.py         # Sensors: price, forecast, cheapest hours, charge status
+│   ├── button.py         # Buttons: charge, discharge, self-use, stop, charge-to-SOC
+│   ├── number.py         # Numbers: target SOC, charge power, duration
+│   ├── calendar.py       # Calendar: event tracking for charge/discharge actions
 │   ├── services.yaml     # Service definitions
-│   └── strategies/       # Strategy implementations (spot price, time-of-use, self-use, manual)
+│   ├── strings.json      # UI strings for config flow and entities
+│   ├── ha/               # Home Assistant integration layer
+│   │   ├── const.py      # Domain, config keys, defaults, enums
+│   │   ├── coordinator.py# DataUpdateCoordinator: fetch prices, forecast, execute Solax
+│   │   ├── price_adapter.py # Normalize Czech OTE / Nord Pool / generic price sensors
+│   │   └── services.py   # Register and handle solar_mind.* services
+│   └── mind/             # Core logic (HA-independent)
+│       ├── models.py     # PriceData, HourlyPrice, SolarMindData
+│       ├── types.py      # Generic types: Timeseries, Energy
+│       ├── fixed_tariff.py # D57d two-rate tariff schedule
+│       └── generation_forecast.py # forecast.solar API client
 └── solax_pv_simulator/   # Simulated Solax inverter for testing
     ├── __init__.py       # Setup entry, create simulator, platforms, services
     ├── config_flow.py    # UI: battery capacity, max power, etc.
@@ -170,32 +178,56 @@ custom_components/
     └── services.yaml     # Service definitions
 ```
 
-- **Solar Mind** does not talk to hardware directly. It reads **entities** (price sensor, weather, Solax entities) and writes **entities** (Solax select/number/button) to control the inverter. So it works with a real Solax integration or with the **Solax PV Simulator**.
+- **Solar Mind** does not talk to hardware directly. It reads **entities** (price sensor, Solax entities) and external APIs (forecast.solar), then writes **entities** (Solax select/number/button) to control the inverter.
 - **Solax PV Simulator** mimics a Solax inverter: same entity types and behaviors, so you can develop and test Solar Mind without real hardware.
 
 ---
 
 ## 4. Entities in This Project
 
-### 4.1 Solar Mind entities (sensors)
+### 4.1 Solar Mind Sensors
 
-All are under the same device (integration instance). Each sensor is built from `SolarMindData` provided by the coordinator.
+All sensors are under the same device (integration instance). Each sensor is built from `SolarMindData` provided by the coordinator.
 
 | Entity ID (pattern) | Description |
 |--------------------|-------------|
-| `sensor.solar_mind_status` | Current system status: `charging`, `discharging`, `self_use`, `house_from_grid`, `idle`, `error`. Attributes: `mode`, `reason`, `power_w`, `duration_seconds`, `battery_soc` |
-| `sensor.solar_mind_recommended_action` | Human-readable recommendation (e.g. “Charge from grid at 3000W”) |
-| `sensor.solar_mind_current_price` | Current spot price (e.g. CZK/kWh). Attributes: `tomorrow_available`, `min_today`, `max_today`, `current_rank`, `total_hours` |
-| `sensor.solar_mind_active_strategy` | Active strategy name (from selector or fallback) |
-| `sensor.solar_mind_strategy_mode` | Strategy decision string (e.g. `charging_3000w`) |
+| `sensor.solar_mind_current_price` | Current electricity price. Attributes: `hourly_prices`, `price_mode`, `tomorrow_available`, `min_today`, `max_today`, `current_rank`, `total_hours`, `current_tariff` (for fixed mode) |
 | `sensor.solar_mind_next_cheap_hour` | Next hour (HH:MM) when price is among cheapest. Attributes: `cheap_hours`, `next_start`, `next_price` |
-| `sensor.solar_mind_cheapest_hours_today` | Comma-separated hours (e.g. “2, 3, 4, 5, 6, 7”). Attributes: `hours` (list of {hour, price}) |
+| `sensor.solar_mind_cheapest_hours_today` | Comma-separated hours (e.g. "2, 3, 4, 5, 6, 7"). Attributes: `hours` (list of {hour, price}) |
+| `sensor.solar_mind_generation_forecast` | PV generation forecast (Wh for current hour). Attributes: `hourly_forecast`, `total_today_wh`, `total_today_kwh`, `total_tomorrow_wh`, `total_tomorrow_kwh`, `source` |
+| `sensor.solar_mind_charge_to_soc_status` | Charge-to-value status string. Attributes: `target_soc`, `active` |
 | `sensor.solar_mind_last_update` | Last coordinator update (timestamp) |
-| `sensor.solar_mind_next_action` | Reason for current action |
-| `sensor.solar_mind_battery_soc` | Battery SOC from last Solax read (%) |
-| `sensor.solar_mind_last_error` | Last error message (diagnostic; disabled by default in entity registry) |
+| `sensor.solar_mind_last_error` | Last error message (diagnostic; disabled by default) |
 
-### 4.2 Solax PV Simulator entities
+### 4.2 Solar Mind Numbers
+
+| Entity ID (pattern) | Description |
+|--------------------|-------------|
+| `number.solar_mind_target_battery_soc` | Target SOC percentage for charge-to-value (10–100%) |
+| `number.solar_mind_charge_to_soc_power` | Charging power in watts (100–15000 W) |
+| `number.solar_mind_charge_to_soc_duration` | Trigger duration in seconds (300–86400 s) |
+
+### 4.3 Solar Mind Buttons
+
+| Entity ID (pattern) | Description |
+|--------------------|-------------|
+| `button.solar_mind_charge_battery_from_grid` | Trigger charge from grid |
+| `button.solar_mind_discharge_battery_to_grid` | Trigger discharge to grid |
+| `button.solar_mind_set_self_use` | Set self-use mode |
+| `button.solar_mind_set_house_use_grid` | Set house-from-grid mode (no discharge) |
+| `button.solar_mind_set_battery_for_house` | Alias for self-use |
+| `button.solar_mind_apply_strategy` | Refresh data |
+| `button.solar_mind_stop_discharge` | Stop discharge (Enabled No Discharge mode) |
+| `button.solar_mind_charge_to_target_soc` | Start charge-to-target-SOC |
+| `button.solar_mind_cancel_charge_to_soc` | Cancel charge-to-SOC |
+
+### 4.4 Solar Mind Calendar
+
+| Entity ID (pattern) | Description |
+|--------------------|-------------|
+| `calendar.solar_mind_calendar` | Calendar tracking charging/discharging events |
+
+### 4.5 Solax PV Simulator Entities
 
 The simulator exposes the same kinds of entities a real Solax Modbus integration would, so Solar Mind can target them.
 
@@ -236,8 +268,6 @@ The simulator exposes the same kinds of entities a real Solax Modbus integration
 | `remotecontrol_trigger` | Apply current remote control settings (mode + power + duration) |
 | `passive_update_battery_charge_discharge` | (Passive) Apply desired grid power |
 
-Solar Mind (or a user) sets the select/number and then presses the trigger button so the inverter applies the new mode and power.
-
 ---
 
 ## 5. Solar Plant and Inverter Concepts
@@ -275,15 +305,13 @@ The integration respects these (and optional min/max SOC) when deciding charge/d
 - **Discharge to grid:** Battery (and/or PV) is sent to the grid (e.g. when selling price is high).
 - **No discharge / house from grid:** House is supplied from grid; battery is preserved (no discharge).
 
-Strategies in this project map to these intents and then to Solax remote control modes.
-
 ---
 
 ## 6. Solax Entities: What They Are and What They Do
 
 Real Solax integrations (e.g. Solax Modbus) expose **select**, **number**, and **button** entities to control the inverter. Solar Mind (and the simulator) use the same contract.
 
-### 6.1 Remote control modes (Solax “Power Control” select)
+### 6.1 Remote control modes (Solax "Power Control" select)
 
 This is the main lever: *how* the inverter uses PV, battery, and grid.
 
@@ -293,28 +321,29 @@ This is the main lever: *how* the inverter uses PV, battery, and grid.
 | **Enabled Grid Control** | Inverter tries to achieve a **grid power setpoint** (W). Positive = import, negative = export. Used to *charge from grid* (positive setpoint) or *export* (negative). |
 | **Enabled Battery Control** | Inverter tries to achieve a **battery power setpoint** (W). Positive = charge, negative = discharge. Used to charge or discharge the battery to a target power. |
 | **Enabled Self Use** | Classic self-consumption: PV → house and battery; battery → house when needed; grid fills the rest. No intentional export. |
-| **Enabled No Discharge** | Battery is not discharged; house can use PV and grid. Used to “preserve” battery. |
+| **Enabled No Discharge** | Battery is not discharged; house can use PV and grid. Used to "preserve" battery. |
 | **Enabled Feedin Priority** | Priority to feed surplus to grid (PV/battery export). |
+| **Enabled Power Control** | Used for charge-to-value: sets a power setpoint to charge the battery. |
 
-Solar Mind sets **Grid Control** for grid charging (positive power) and **Battery Control** for discharging to grid (negative battery power), and **Self Use** / **No Discharge** for the corresponding behaviors.
+Solar Mind sets **Battery Control** for grid charging (positive power) and **Grid Control** for discharging to grid (negative grid power), and **Self Use** / **No Discharge** for the corresponding behaviors.
 
 ### 6.2 Active power and duration
 
 - **Remote Control Active Power (number):** Setpoint in W. Meaning depends on mode: for Grid Control = desired grid power; for Battery Control = desired battery power (positive = charge, negative = discharge).
-- **Autorepeat duration (number):** How long (seconds) the command is applied before the inverter may revert (e.g. back to self-use) or repeat. Solar Mind sets this so the inverter doesn’t need a new trigger every minute.
+- **Autorepeat duration (number):** How long (seconds) the command is applied before the inverter may revert (e.g. back to self-use) or repeat.
 
 ### 6.3 Trigger button
 
-After changing the **select** (mode) and **number(s)** (power, duration), something must tell the inverter to **apply** the new settings. That’s the **Remote Control Trigger** button. Solar Mind (and the simulator) call `button.press` on that entity after updating select and numbers.
+After changing the **select** (mode) and **number(s)** (power, duration), something must tell the inverter to **apply** the new settings. That's the **Remote Control Trigger** button. Solar Mind (and the simulator) call `button.press` on that entity after updating select and numbers.
 
 ### 6.4 Battery SOC and optional entities
 
-- **Battery SOC (sensor):** Read-only. Used by Solar Mind to know current level and respect min/max SOC in strategies.
-- **Energy storage mode (select):** Higher-level mode (Self Use, Feed In Priority, Backup, Manual). Optional in config; Solar Mind focuses on the **remote control power control** select and power/duration/trigger.
+- **Battery SOC (sensor):** Read-only. Used by Solar Mind to know current level and for the charge-to-SOC feature.
+- **Energy storage mode (select):** Higher-level mode (Self Use, Feed In Priority, Backup, Manual). Optional in config.
 
 ### 6.5 Passive mode (Sofar)
 
-Some inverters (e.g. Sofar in passive mode) don’t use the same select/trigger; they expose a **desired grid power** number and a **button** to apply it. Solar Mind supports this via `passive_desired_grid_power` and `passive_update_trigger` in config; the logic is the same (set power, then trigger).
+Some inverters (e.g. Sofar in passive mode) don't use the same select/trigger; they expose a **desired grid power** number and a **button** to apply it. Solar Mind supports this via `passive_desired_grid_power` and `passive_update_trigger` in config; the logic is the same (set power, then trigger).
 
 ---
 
@@ -322,29 +351,22 @@ Some inverters (e.g. Sofar in passive mode) don’t use the same select/trigger;
 
 ### 7.1 Data flow (Solar Mind)
 
-1. **Coordinator** runs periodically (e.g. every 5 minutes) and in `_async_update_data`:
-   - **Fetches prices** from the configured price sensor (Czech OTE, Nord Pool, or generic) via `price_adapter`.
-   - **Fetches weather** from the configured weather entity (hourly forecast) for solar potential.
-   - **Fetches Solax state** (battery SOC, current mode, active power) from the configured Solax entities.
-   - **Resolves active strategy** from the strategy selector entity (or fallback option).
-   - **Runs the strategy** with `StrategyInput` (time, prices, weather, Solax state, options) and gets `StrategyOutput` (status, mode, power_w, duration_seconds, reason).
-   - **Executes** the output: calls Solax select/number/button services (or passive number/button) to apply the recommended mode and power.
-2. **Sensors** read from `coordinator.data` (`SolarMindData`) and expose status, price, strategy, next cheap hour, SOC, etc.
+1. **Coordinator** runs periodically (every 30 minutes) and in `_async_update_data`:
+   - **Fetches prices** from the configured price sensor (Czech OTE, Nord Pool, or generic) via `price_adapter`, or generates fixed tariff prices.
+   - **Fetches generation forecast** from forecast.solar API via `generation_forecast.py`.
+   - **Builds SolarMindData** with prices, forecast, and charge-to-SOC status.
 
-So: **read entities → run strategy → write entities**. No direct hardware access.
+2. **Sensors** read from `coordinator.data` (`SolarMindData`) and expose price, forecast, cheapest hours, etc.
 
-### 7.2 Strategies (what they decide)
+3. **Manual control** is done via buttons or services, which call coordinator methods like `async_charge_from_grid()`, `async_set_self_use()`, etc.
 
-- **Spot price + weather:** Charge from grid when price &lt; charge threshold (and in charge window); discharge to grid when price &gt; discharge threshold (if allowed); prefer self-use when solar forecast is good; otherwise preserve battery (e.g. house from grid).
-- **Time of use:** Charge in a fixed time window (e.g. night); outside the window, self-use or no discharge.
-- **Self use only:** Always command Self Use mode; no grid charge or discharge.
-- **Manual:** Strategy still runs (so sensors update), but execution can be disabled or user drives behavior via services.
+4. **Execution on Solax**: The coordinator's execute methods call Solax select/number/button services to apply the requested mode and power.
 
-Strategy output is translated into a **Solax mode** (e.g. Grid Control, Battery Control, Self Use, No Discharge) and optional **power_w** and **duration_seconds**, then applied via entities.
+So: **read data → expose via sensors → manual control via buttons/services → write to Solax entities**.
 
-### 7.3 Execution on Solax (Modbus remote)
+### 7.2 Execution on Solax (Modbus remote)
 
-For each update, when the strategy says “charge” or “discharge” or “self-use”, the coordinator:
+When a service or button triggers an action, the coordinator:
 
 1. Calls `select.select_option` on **Remote Control Power Control** with the chosen mode.
 2. If power is set: calls `number.set_value` on **Remote Control Active Power** (and optionally **Autorepeat Duration**).
@@ -352,633 +374,158 @@ For each update, when the strategy says “charge” or “discharge” or “se
 
 The inverter then applies that mode and setpoint until the duration expires or a new command is sent.
 
-### 7.4 Simulator vs real inverter
+### 7.3 Simulator vs real inverter
 
-- **Solax PV Simulator** implements the same entity interface and the same modes (Grid Control, Battery Control, Self Use, etc.) and power flow logic (PV curve, house load, battery SOC). So Solar Mind behaves the same in tests: it reads simulator entities and calls the same select/number/button services.
-- **Real Solax** (e.g. Modbus): same entity IDs and service calls; only the backend is the real inverter instead of `simulator_core`.
-
----
-
-## 8. Decision Flow Charts
-
-This section provides visual flowcharts to help you understand how Solar Mind makes decisions about when to charge, discharge, or use self-use mode. These diagrams show exactly which parameters influence each decision.
-
-### 8.1 High-Level Coordinator Update Cycle
-
-Every update cycle (default: 5 minutes), the coordinator fetches data and executes the strategy:
-
-```mermaid
-flowchart TB
-    subgraph Coordinator["Coordinator Update Cycle"]
-        START([Timer Trigger]) --> FETCH_PRICES[Fetch Price Data]
-        FETCH_PRICES --> FETCH_WEATHER[Fetch Weather Forecast]
-        FETCH_WEATHER --> FETCH_SOLAX[Fetch Solax State]
-        FETCH_SOLAX --> GET_STRATEGY[Determine Active Strategy]
-        GET_STRATEGY --> RUN_STRATEGY[Run Strategy]
-        RUN_STRATEGY --> EXECUTE[Execute on Solax]
-        EXECUTE --> UPDATE_SENSORS[Update Sensors]
-        UPDATE_SENSORS --> END([Wait for Next Cycle])
-    end
-    
-    subgraph Inputs["Input Data Sources"]
-        PRICE_SENSOR[(Price Sensor<br/>Czech OTE / Nord Pool / Generic)]
-        WEATHER_ENTITY[(Weather Entity<br/>Hourly Forecast)]
-        SOLAX_ENTITIES[(Solax Entities<br/>SOC, Mode, Power)]
-        STRATEGY_SELECTOR[(Strategy Selector<br/>input_select Entity)]
-    end
-    
-    PRICE_SENSOR --> FETCH_PRICES
-    WEATHER_ENTITY --> FETCH_WEATHER
-    SOLAX_ENTITIES --> FETCH_SOLAX
-    STRATEGY_SELECTOR --> GET_STRATEGY
-    
-    subgraph Options["Configuration Options"]
-        CONFIG[("Options:<br/>• update_interval<br/>• fallback_strategy<br/>• price thresholds<br/>• SOC limits<br/>• power limits<br/>• charge window")]
-    end
-    
-    CONFIG --> RUN_STRATEGY
-```
-
-### 8.2 Strategy Selection Flow
-
-How the active strategy is determined from the selector entity or fallback:
-
-```mermaid
-flowchart TB
-    START([Get Active Strategy]) --> CHECK_SELECTOR{Strategy Selector<br/>Entity Configured?}
-    
-    CHECK_SELECTOR -->|No| USE_FALLBACK[Use Fallback Strategy]
-    CHECK_SELECTOR -->|Yes| READ_STATE[Read Selector State]
-    
-    READ_STATE --> STATE_VALID{State Available<br/>& Valid?}
-    
-    STATE_VALID -->|No| USE_FALLBACK
-    STATE_VALID -->|Yes| MATCH_KEY{Match Strategy Key}
-    
-    MATCH_KEY -->|"spot_price_weather"| SPOT[Spot Price + Weather]
-    MATCH_KEY -->|"time_of_use"| TOU[Time of Use]
-    MATCH_KEY -->|"self_use_only"| SELF[Self Use Only]
-    MATCH_KEY -->|"manual"| MANUAL[Manual]
-    MATCH_KEY -->|"Unknown"| USE_FALLBACK
-    
-    USE_FALLBACK --> FALLBACK_KEY{Fallback Strategy<br/>from Options}
-    
-    FALLBACK_KEY -->|Default| SPOT
-    FALLBACK_KEY -->|Configured| SELECTED[Selected Strategy]
-    
-    SPOT --> RETURN([Return Strategy])
-    TOU --> RETURN
-    SELF --> RETURN
-    MANUAL --> RETURN
-    SELECTED --> RETURN
-```
-
-### 8.3 Spot Price + Weather Strategy Decision Flow
-
-This is the main optimization strategy. It uses prices, weather, time, and battery state to make decisions:
-
-```mermaid
-flowchart TB
-    START([Strategy Input]) --> CHECK_PRICE{Current Price<br/>Available?}
-    
-    CHECK_PRICE -->|No| FALLBACK_TOU[Fallback to<br/>Time-of-Use Logic]
-    CHECK_PRICE -->|Yes| CALC_CONDITIONS[Calculate Conditions]
-    
-    subgraph Conditions["Evaluate Conditions"]
-        CALC_CONDITIONS --> C1{price ≤<br/>charge_threshold?}
-        C1 -->|Yes| CHEAP[price_is_cheap = true]
-        C1 -->|No| NOT_CHEAP[price_is_cheap = false]
-        
-        CALC_CONDITIONS --> C2{price ≥<br/>discharge_threshold?}
-        C2 -->|Yes| EXPENSIVE[price_is_expensive = true]
-        C2 -->|No| NOT_EXPENSIVE[price_is_expensive = false]
-        
-        CALC_CONDITIONS --> C3{hour in<br/>charge_window?}
-        C3 -->|Yes| IN_WINDOW[in_charge_window = true]
-        C3 -->|No| OUT_WINDOW[in_charge_window = false]
-        
-        CALC_CONDITIONS --> C4{solar_potential<br/>≥ 50%?}
-        C4 -->|Yes| GOOD_SOLAR[good_solar = true]
-        C4 -->|No| BAD_SOLAR[good_solar = false]
-    end
-    
-    CHEAP --> DECISION1
-    NOT_CHEAP --> DECISION1
-    EXPENSIVE --> DECISION1
-    NOT_EXPENSIVE --> DECISION1
-    IN_WINDOW --> DECISION1
-    OUT_WINDOW --> DECISION1
-    GOOD_SOLAR --> DECISION1
-    BAD_SOLAR --> DECISION1
-    
-    DECISION1{price_is_cheap<br/>AND<br/>in_charge_window?}
-    
-    DECISION1 -->|Yes| CHECK_SOC_CHARGE{SOC ≥ max_soc?}
-    CHECK_SOC_CHARGE -->|Yes| SELF_USE_FULL["SELF_USE<br/>Battery full"]
-    CHECK_SOC_CHARGE -->|No| CHARGING["CHARGING<br/>Grid Control<br/>power = max_charge_power"]
-    
-    DECISION1 -->|No| DECISION2{price_is_expensive<br/>AND<br/>discharge_allowed?}
-    
-    DECISION2 -->|Yes| CHECK_SOC_DISCHARGE{SOC ≤ min_soc?}
-    CHECK_SOC_DISCHARGE -->|Yes| HOUSE_GRID_LOW["HOUSE_FROM_GRID<br/>Battery too low"]
-    CHECK_SOC_DISCHARGE -->|No| DISCHARGING["DISCHARGING<br/>Battery Control<br/>power = -max_discharge_power"]
-    
-    DECISION2 -->|No| DECISION3{good_solar OR<br/>SOC > min_soc?}
-    
-    DECISION3 -->|Yes| SELF_USE["SELF_USE<br/>Use battery for house"]
-    DECISION3 -->|No| HOUSE_GRID["HOUSE_FROM_GRID<br/>Preserve battery"]
-    
-    FALLBACK_TOU --> TOU_CHECK{in_charge_window?}
-    TOU_CHECK -->|Yes| TOU_SOC{SOC ≥ max_soc?}
-    TOU_SOC -->|Yes| SELF_USE_TOU[SELF_USE]
-    TOU_SOC -->|No| CHARGING_TOU[CHARGING]
-    TOU_CHECK -->|No| SELF_USE_TOU2[SELF_USE]
-    
-    CHARGING --> OUTPUT([Strategy Output])
-    DISCHARGING --> OUTPUT
-    SELF_USE --> OUTPUT
-    SELF_USE_FULL --> OUTPUT
-    HOUSE_GRID --> OUTPUT
-    HOUSE_GRID_LOW --> OUTPUT
-    CHARGING_TOU --> OUTPUT
-    SELF_USE_TOU --> OUTPUT
-    SELF_USE_TOU2 --> OUTPUT
-```
-
-### 8.4 Spot Price Strategy - Parameter Reference
-
-Key parameters that determine the Spot Price + Weather strategy decisions:
-
-| Parameter | Config Key | Default | Effect on Decision |
-|-----------|------------|---------|-------------------|
-| **Charge Price Threshold** | `charge_price_threshold` | 0.05 | If current_price ≤ threshold → eligible for charging |
-| **Discharge Price Threshold** | `discharge_price_threshold` | 0.15 | If current_price ≥ threshold → eligible for discharging |
-| **Charge Window Start** | `charge_window_start` | 22 (10 PM) | Charging only allowed from this hour |
-| **Charge Window End** | `charge_window_end` | 6 (6 AM) | Charging only allowed until this hour |
-| **Min SOC** | `min_soc` | 10% | Battery won't discharge below this level |
-| **Max SOC** | `max_soc` | 95% | Battery won't charge above this level |
-| **Discharge Allowed** | `discharge_allowed` | false | Must be true to sell to grid |
-| **Max Charge Power** | `max_charge_power` | 3000W | Power setpoint for charging |
-| **Max Discharge Power** | `max_discharge_power` | 3000W | Power setpoint for discharging |
-
-### 8.5 Time of Use Strategy Decision Flow
-
-A simpler strategy based only on time windows, ignoring spot prices:
-
-```mermaid
-flowchart TB
-    START([Strategy Input]) --> GET_HOUR[Get Current Hour]
-    
-    GET_HOUR --> CHECK_WINDOW{Hour in Charge Window?<br/>charge_window_start to charge_window_end}
-    
-    CHECK_WINDOW -->|Yes| CHECK_SOC{SOC ≥ max_soc?}
-    
-    CHECK_SOC -->|Yes| SELF_USE_FULL["SELF_USE<br/>Battery already full"]
-    CHECK_SOC -->|No| CHARGING["CHARGING<br/>Grid Control<br/>power = max_charge_power"]
-    
-    CHECK_WINDOW -->|No| CHECK_DISCHARGE{discharge_allowed?}
-    
-    CHECK_DISCHARGE -->|Yes| SELF_USE["SELF_USE<br/>Battery available for house"]
-    CHECK_DISCHARGE -->|No| HOUSE_GRID["HOUSE_FROM_GRID<br/>No Discharge mode"]
-    
-    CHARGING --> OUTPUT([Strategy Output])
-    SELF_USE --> OUTPUT
-    SELF_USE_FULL --> OUTPUT
-    HOUSE_GRID --> OUTPUT
-    
-    subgraph Parameters["Key Parameters"]
-        P1["charge_window_start<br/>(default: 22:00)"]
-        P2["charge_window_end<br/>(default: 06:00)"]
-        P3["max_soc<br/>(default: 95%)"]
-        P4["discharge_allowed<br/>(default: false)"]
-        P5["max_charge_power<br/>(default: 3000W)"]
-    end
-```
-
-### 8.6 Self-Use Only and Manual Strategies
-
-These are simple strategies with minimal decision logic:
-
-```mermaid
-flowchart LR
-    subgraph SelfUseOnly["Self Use Only Strategy"]
-        SU_START([Input]) --> SU_OUTPUT["Always returns:<br/>SELF_USE<br/>Enabled Self Use mode"]
-    end
-    
-    subgraph Manual["Manual Strategy"]
-        M_START([Input]) --> M_OUTPUT["Always returns:<br/>IDLE<br/>Disabled mode<br/>(no commands sent)"]
-    end
-```
-
-### 8.7 Strategy Output to Solax Execution Flow
-
-How the strategy output is translated into Solax commands:
-
-```mermaid
-flowchart TB
-    START([Strategy Output]) --> CHECK_STATUS{Status is<br/>ERROR or IDLE?}
-    
-    CHECK_STATUS -->|Yes| SKIP[Skip Execution<br/>No commands sent]
-    CHECK_STATUS -->|No| CHECK_TYPE{Device Type?}
-    
-    CHECK_TYPE -->|Modbus Remote| MODBUS_EXEC
-    CHECK_TYPE -->|Passive Sofar| PASSIVE_EXEC
-    
-    subgraph MODBUS_EXEC["Modbus Remote Execution"]
-        M1[Set Power Control Mode<br/>select.select_option] --> M2[Set Active Power<br/>number.set_value]
-        M2 --> M3[Set Autorepeat Duration<br/>number.set_value]
-        M3 --> M4[Press Trigger Button<br/>button.press]
-    end
-    
-    subgraph PASSIVE_EXEC["Passive Sofar Execution"]
-        P1[Set Desired Grid Power<br/>number.set_value] --> P2[Press Update Trigger<br/>button.press]
-    end
-    
-    subgraph StatusToMode["Status → Solax Mode Mapping"]
-        S1["CHARGING → Enabled Grid Control<br/>power = +max_charge_power"]
-        S2["DISCHARGING → Enabled Battery Control<br/>power = -max_discharge_power"]
-        S3["SELF_USE → Enabled Self Use"]
-        S4["HOUSE_FROM_GRID → Enabled No Discharge"]
-    end
-    
-    M4 --> DONE([Execution Complete])
-    P2 --> DONE
-    SKIP --> DONE
-```
-
-### 8.8 Complete System Flow Overview
-
-End-to-end flow showing all major components:
-
-```mermaid
-flowchart TB
-    subgraph External["External Data Sources"]
-        PRICE_API[(Price API<br/>OTE/Nord Pool)]
-        WEATHER_API[(Weather API)]
-        INVERTER[(Solax Inverter<br/>or Simulator)]
-    end
-    
-    subgraph HA["Home Assistant"]
-        PRICE_SENSOR[Price Sensor Entity]
-        WEATHER_ENTITY[Weather Entity]
-        SOLAX_ENTITIES[Solax Entities<br/>SOC, Mode, Power]
-        STRATEGY_SELECT[Strategy Selector<br/>input_select]
-    end
-    
-    subgraph SolarMind["Solar Mind Integration"]
-        COORD[Coordinator<br/>DataUpdateCoordinator]
-        ADAPTER[Price Adapter<br/>Normalize prices]
-        STRATEGIES[Strategy Engine<br/>spot_price / time_of_use /<br/>self_use / manual]
-        EXECUTOR[Execution Engine<br/>Call Solax services]
-        SENSORS[Solar Mind Sensors<br/>Status, Price, Action, etc.]
-    end
-    
-    PRICE_API --> PRICE_SENSOR
-    WEATHER_API --> WEATHER_ENTITY
-    INVERTER <--> SOLAX_ENTITIES
-    
-    PRICE_SENSOR --> ADAPTER
-    ADAPTER --> COORD
-    WEATHER_ENTITY --> COORD
-    SOLAX_ENTITIES --> COORD
-    STRATEGY_SELECT --> COORD
-    
-    COORD --> STRATEGIES
-    STRATEGIES --> EXECUTOR
-    EXECUTOR --> SOLAX_ENTITIES
-    
-    COORD --> SENSORS
-    
-    subgraph User["User Interface"]
-        DASHBOARD[HA Dashboard<br/>View sensors & state]
-        SERVICES[HA Services<br/>Manual control]
-        OPTIONS[Integration Options<br/>Configure thresholds]
-    end
-    
-    SENSORS --> DASHBOARD
-    SERVICES --> EXECUTOR
-    OPTIONS --> STRATEGIES
-```
-
-### 8.9 Decision Priority Summary
-
-The Spot Price + Weather strategy evaluates conditions in this priority order:
-
-```mermaid
-flowchart TB
-    subgraph Priority["Decision Priority (Evaluated Top to Bottom)"]
-        P1["1. CHARGE from Grid<br/>Conditions: price ≤ charge_threshold AND in_charge_window AND SOC < max_soc"]
-        P2["2. DISCHARGE to Grid<br/>Conditions: price ≥ discharge_threshold AND discharge_allowed AND SOC > min_soc"]
-        P3["3. SELF USE<br/>Conditions: good_solar_forecast OR SOC > min_soc"]
-        P4["4. HOUSE FROM GRID<br/>Default: preserve battery when no other condition met"]
-        
-        P1 --> P2
-        P2 --> P3
-        P3 --> P4
-    end
-    
-    subgraph Legend["Solax Mode Applied"]
-        L1["CHARGE → Enabled Grid Control (+power)"]
-        L2["DISCHARGE → Enabled Battery Control (-power)"]
-        L3["SELF USE → Enabled Self Use"]
-        L4["HOUSE FROM GRID → Enabled No Discharge"]
-    end
-```
+- **Solax PV Simulator** implements the same entity interface and the same modes. So Solar Mind behaves the same in tests: it reads simulator entities and calls the same select/number/button services.
+- **Real Solax** (e.g. Modbus): same entity IDs and service calls; only the backend is the real inverter.
 
 ---
 
-## 9. Dashboard and Custom Cards
+## 8. Pricing Modes
 
-Solar Mind includes a comprehensive dashboard with custom Lovelace cards for visualizing energy data.
+Solar Mind supports two pricing modes:
 
-### 9.1 Dashboard Tabs
+### 8.1 Spot Prices
 
-The default dashboard includes seven tabs:
+Reads prices from a configured sensor (Czech OTE, Nord Pool, or generic). The price adapter normalizes different sensor formats into a common `PriceData` structure with:
+- `today`: List of `HourlyPrice` for today
+- `tomorrow`: List of `HourlyPrice` for tomorrow (if available)
+- `current_price`: Current hour's price
+- `tomorrow_available`: Whether tomorrow's prices are published
 
-| Tab | Purpose |
-|-----|---------|
-| **Overview** | Real-time energy flow, battery status, weather, historical graphs (24h), and quick actions |
-| **Planning** | 24-hour forecast (PV, load, battery %), milestones, and appliance recommendations |
-| **Graphs** | Full visibility: expected (forecast) chart and actual (historical) graphs for battery, PV, load, grid (24h–7d) |
-| **Events** | System event timeline and away period management |
-| **History** | Historical graphs (24h and 7d), forecast accuracy, and prediction vs actual comparisons |
-| **Health** | System health score, temperatures, warnings, and diagnostics |
-| **Settings** | Configuration guidance and manual controls |
+### 8.2 Fixed Tariff (D57d)
 
-### 9.2 Custom Lovelace Cards
+Generates prices based on the Czech D57d distribution tariff timetable. This is a two-rate (high/low) schedule defined in CET/CEST timezone.
 
-Solar Mind provides custom cards located in `custom_components/solar_mind/www/`:
+**Workday Low-Tariff Windows:**
+- 00:00–06:15
+- 07:15–08:15
+- 09:15–18:15
+- 19:15–20:15
+- 21:15–23:59
 
-| Card | Description |
-|------|-------------|
-| `solar-mind-energy-flow-card` | Visual diagram showing energy flow between solar, battery, grid, and house |
-| `solar-mind-events-card` | Timeline of system events (charges, discharges, weather changes, etc.) |
-| `solar-mind-forecast-card` | Charts showing expected PV generation, house load, and predicted battery level (SOC) over the next 24h |
-| `solar-mind-cheapest-hours-card` | Cheapest hours today and price forecast (future data only; use instead of entity more-info) |
-| `solar-mind-milestones-card` | Upcoming milestones and appliance recommendations |
-| `solar-mind-health-card` | System health score ring with warnings and diagnostics |
+**Weekend Low-Tariff Windows:**
+- 00:00–07:45
+- 08:45–09:45
+- 10:45–18:15
+- 19:15–20:15
+- 21:15–23:59
 
-### 9.3 Future data: avoid history-stats
-
-Sensors that represent **future or forecast data** (e.g. cheapest hours today, price forecast, next planned charge, PV/load forecasts) are configured with `state_class: None`. This prevents Home Assistant from treating them as time-series and showing a **history graph** in the entity more-info dialog, which would be misleading for forecast data.
-
-**Use the custom Lovelace cards** for these entities instead of opening the entity popup:
-
-- **Cheapest hours / price forecast:** Add the **Solar Mind Cheapest Hours** card (`solar-mind-cheapest-hours-card`). It shows today’s cheapest hours and an optional 24h price forecast bar (future data only, no history).
-- **24h energy forecast:** Use the **Solar Mind Forecast** card with `sensor.solar_mind_hourly_plan` for expected PV, load, predicted battery %, and planned actions.
-
-### 9.4 Expected vs historical graphs
-
-- **Expected (forecast):** The **Solar Mind Forecast** card shows expected PV generation (W), expected house load (W), and **expected battery level (%)** over the next 24 hours, plus the planned action timeline (charge/discharge/self-use/idle).
-- **Actual (historical):** The dashboard uses Home Assistant **history-graph** cards for recorded values: battery level, PV power, house load, and grid power. These appear on the **Overview** tab (24h), the **Graphs** tab (24h–7d), and the **History** tab (24h and 7d). Entities must be recorded by the Recorder (e.g. Solax simulator or real inverter sensors).
-
-Example:
-
-```yaml
-type: custom:solar-mind-cheapest-hours-card
-entity: sensor.solar_mind_cheapest_hours_today
-price_forecast_entity: sensor.solar_mind_price_forecast
-title: Cheapest Hours Today
-show_prices: true
-show_price_chart: true
-```
-
-**Installation:**
-
-1. The dev seed script (`dev/seed_storage.py`) automatically copies cards to `dev/config/www/solar-mind/`
-2. Cards are registered in the Lovelace configuration as resources
-3. For production, copy the `www` folder to your Home Assistant `config/www/solar-mind/`
-4. For production, run `./scripts/deploy.sh` (or use -h/-p); it syncs both the integration and the www folder to `config/www/solar-mind/`. Then add the resource once in Lovelace.
-
-**Example card configuration:**
-
-```yaml
-type: custom:solar-mind-energy-flow-card
-entity: sensor.solar_mind_energy_flow
-title: Energy Flow
-```
+The `fixed_tariff.py` module provides:
+- `is_low_tariff(dt)`: Check if a datetime falls in low-tariff period
+- `build_fixed_price_data(high_price, low_price)`: Generate 24-hour price data for today and tomorrow
 
 ---
 
-## 10. Events System
+## 9. Generation Forecasting
 
-Solar Mind tracks system events for monitoring and debugging.
+Solar Mind fetches PV generation forecasts from the **forecast.solar** API.
 
-### 10.1 Event Types
+### 9.1 Configuration
 
-| Event Type | Description |
-|------------|-------------|
-| `strategy_changed` | Active strategy was changed |
-| `battery_full` | Battery reached maximum SOC |
-| `battery_low` | Battery reached minimum SOC |
-| `charge_started` | Grid charging began |
-| `charge_completed` | Grid charging ended |
-| `discharge_started` | Grid discharge began |
-| `discharge_completed` | Grid discharge ended |
-| `weather_changed` | Weather forecast changed significantly |
-| `price_spike` | Electricity price 50%+ above average |
-| `price_drop` | Electricity price 50%+ below average |
-| `surplus_expected` | Solar surplus predicted |
-| `away_mode_started` | Away period became active |
-| `away_mode_ended` | Away period ended |
-| `system_error` | System error occurred |
-| `system_warning` | System warning triggered |
-| `milestone_reached` | Milestone event occurred |
+During setup, the user configures:
+- **Azimuth**: Panel orientation (-180 to 180, 0=North, 180=South)
+- **Tilt**: Panel angle (0=horizontal, 90=vertical)
+- **Max PV Power**: Peak power capacity in Watts
 
-### 10.2 Event Sensors
+Latitude and longitude are taken from Home Assistant's core configuration.
 
-| Sensor | Description |
-|--------|-------------|
-| `sensor.solar_mind_recent_events_count` | Count of recent events (attributes contain full event list) |
-| `sensor.solar_mind_latest_event` | Title of most recent event |
+### 9.2 API Client
+
+The `ForecastSolarApiGenerationForecast` class in `generation_forecast.py`:
+- Queries the forecast.solar API with location and PV system parameters
+- Returns a `Timeseries[Energy]` with hourly Wh predictions
+- Results are cached and refreshed periodically
+
+### 9.3 Sensor
+
+The `sensor.solar_mind_generation_forecast` exposes:
+- **State**: Current hour's predicted generation (Wh)
+- **Attributes**:
+  - `hourly_forecast`: Full hourly breakdown
+  - `total_today_wh` / `total_today_kwh`: Total expected today
+  - `total_tomorrow_wh` / `total_tomorrow_kwh`: Total expected tomorrow
+  - `source`: "forecast.solar"
 
 ---
 
-## 11. User Preferences and Away Periods
+## 10. Charge-to-Target-SOC Feature
 
-Solar Mind can optimize based on user schedules and preferences.
+This feature allows charging the battery from grid until a specific SOC percentage is reached, then automatically stopping discharge.
 
-### 11.1 Away Periods
+### 10.1 How it works
 
-When you're away from home, the system reduces expected load and optimizes accordingly.
+1. User sets target SOC via `number.solar_mind_target_battery_soc`
+2. User optionally adjusts power and duration numbers
+3. User presses `button.solar_mind_charge_to_target_soc`
+4. Coordinator:
+   - Checks current SOC against target
+   - Starts charging using "Enabled Power Control" mode
+   - Registers a state change listener on the battery SOC sensor
+5. When SOC reaches target:
+   - Switches to "Enabled No Discharge" mode
+   - Removes the listener
+   - Updates status to "Target reached"
 
-**Adding an away period:**
+### 10.2 State tracking
 
-```yaml
-service: solar_mind.add_away_period
-data:
-  start: "2024-01-15 08:00:00"
-  end: "2024-01-17 18:00:00"
-  label: "Vacation"
-  reduce_load_percent: 70
-```
+The `sensor.solar_mind_charge_to_soc_status` shows:
+- "Idle" - not active
+- "Charging to X%" - in progress
+- "Charging to X% (now Y%)" - in progress with current SOC
+- "Target reached (X%)" - completed
+- "Already at X% (target Y%)" - skipped because already at target
+- "Cancelled" - user cancelled
+- "Error: No SOC sensor" - configuration issue
 
-**Removing an away period:**
+### 10.3 Cancellation
 
-```yaml
-service: solar_mind.remove_away_period
-data:
-  period_id: "a1b2c3d4"  # ID from away_periods sensor attributes
-```
-
-### 11.2 High-Demand Appliances
-
-Register appliances for optimal scheduling recommendations:
-
-**Adding an appliance:**
-
-```yaml
-service: solar_mind.set_high_demand_appliance
-data:
-  name: "Water heater"
-  power_w: 2000
-```
-
-**Removing an appliance:**
-
-```yaml
-service: solar_mind.remove_high_demand_appliance
-data:
-  name: "Water heater"
-```
-
-The system will recommend the best times to run these appliances based on:
-- Solar surplus availability
-- Electricity prices
-- Battery state
-
-### 11.3 Related Sensors
-
-| Sensor | Description |
-|--------|-------------|
-| `sensor.solar_mind_away_periods` | Count of configured away periods |
-| `sensor.solar_mind_best_water_heater_time` | Recommended time for water heater |
-| `sensor.solar_mind_surplus_start_time` | When solar surplus is expected |
-| `sensor.solar_mind_next_milestone` | Next upcoming milestone/recommendation |
+Press `button.solar_mind_cancel_charge_to_soc` to abort. This:
+- Removes the SOC listener
+- Switches to "Enabled No Discharge" mode
+- Updates status to "Cancelled"
 
 ---
 
-## 12. System Health Monitoring
+## 11. Calendar Integration
 
-Solar Mind monitors system health and provides diagnostics.
+Solar Mind includes a calendar entity that tracks charging and discharging events.
 
-### 12.1 Health Score
+### 11.1 Event Recording
 
-The system health score (0-100%) is calculated based on:
-- Active warnings (-5 points each)
-- Recent errors (-2 points each, max 20)
-- Communication errors (-2 points each, max 20)
-- High battery temperature >45°C (-10 points)
-- High inverter temperature >60°C (-10 points)
+When the coordinator executes a charge or discharge action, it calls `record_calendar_event()` which adds an event to the calendar with:
+- **Summary**: Action type (e.g., "Charging", "Charging to 80%")
+- **Start**: Current hour (rounded down)
+- **End**: Start + duration (default 1 hour)
 
-### 12.2 Health Sensors
+### 11.2 Calendar Entity Features
 
-| Sensor | Description |
-|--------|-------------|
-| `sensor.solar_mind_system_health_score` | Overall health score (0-100%) |
-| `sensor.solar_mind_battery_temperature` | Battery temperature (if available) |
-| `sensor.solar_mind_inverter_temperature` | Inverter temperature (if available) |
-| `sensor.solar_mind_charge_cycles_today` | Number of charge cycles today |
-| `sensor.solar_mind_active_warnings` | Count of active warnings |
+The `calendar.solar_mind_calendar` entity supports:
+- `CREATE_EVENT`: Create new events
+- `DELETE_EVENT`: Remove events
+- `UPDATE_EVENT`: Modify existing events
 
-### 12.3 Warnings
-
-Warnings are automatically triggered for:
-- Battery temperature > 45°C
-- Inverter temperature > 60°C
-- Battery at minimum SOC
-- Communication failures
+Events can be viewed in the Home Assistant calendar view or queried via the calendar API.
 
 ---
 
-## 13. Milestones and Recommendations
+## 12. Services Reference
 
-Solar Mind calculates upcoming milestones to help users plan activities.
+### Manual Control Services
 
-### 13.1 Milestone Types
-
-| Type | Description |
-|------|-------------|
-| `surplus_start` | When solar generation will exceed consumption |
-| `cheap_charge_time` | Next planned charging window |
-| `battery_full` | When battery is expected to be fully charged |
-| `best_appliance_time` | Optimal time for high-demand appliances |
-
-### 13.2 Appliance Recommendations
-
-For registered appliances, the system calculates optimal run times by scoring each hour:
-
-```
-score = (surplus_energy / appliance_power + 1) × price_factor
-```
-
-Where:
-- `surplus_energy` = PV forecast - load forecast
-- `price_factor` = 1 / (price + 0.01)
-
-The hour with the highest score is recommended.
+| Service | Description | Parameters |
+|---------|-------------|------------|
+| `solar_mind.charge_battery_from_grid` | Force charge from grid | `power_w` (optional), `duration_seconds` (optional) |
+| `solar_mind.discharge_battery_to_grid` | Discharge to grid | `power_w` (optional), `duration_seconds` (optional) |
+| `solar_mind.set_self_use` | Set self-use mode | None |
+| `solar_mind.set_battery_for_house` | Alias for self-use | None |
+| `solar_mind.set_house_use_grid` | House from grid (no discharge) | None |
+| `solar_mind.apply_strategy` | Refresh data | None |
+| `solar_mind.charge_to_value` | Charge to target SOC | `target_soc` (optional), `power_w` (optional), `duration_seconds` (optional) |
 
 ---
 
-## 14. Historical Data and Learning
-
-Solar Mind tracks prediction accuracy and can learn from mistakes.
-
-### 14.1 Data Persistence
-
-- **Plan History**: Last 168 hours (7 days) of hourly comparisons
-- **User Preferences**: Persisted to `.storage/solar_mind_{entry_id}.json`
-- **Events**: Last 500 system events (in-memory)
-
-### 14.2 Accuracy Metrics
-
-| Metric | Description |
-|--------|-------------|
-| PV Forecast Accuracy | MAPE (Mean Absolute Percentage Error) for PV predictions |
-| Load Forecast Accuracy | MAPE for load predictions |
-| 7-Day Forecast Accuracy | Rolling 7-day accuracy score |
-
-### 14.3 Related Sensors
-
-| Sensor | Description |
-|--------|-------------|
-| `sensor.solar_mind_forecast_accuracy` | Current PV forecast accuracy (%) |
-| `sensor.solar_mind_historical_comparison` | Summary of prediction accuracy |
-| `sensor.solar_mind_hourly_plan` | Full hourly plan with predictions |
-| `sensor.solar_mind_price_forecast` | Price forecast summary |
-
----
-
-## 15. New Services Reference
-
-### Away Period Management
-
-| Service | Description |
-|---------|-------------|
-| `solar_mind.add_away_period` | Add an away period |
-| `solar_mind.remove_away_period` | Remove an away period |
-
-### Appliance Management
-
-| Service | Description |
-|---------|-------------|
-| `solar_mind.set_high_demand_appliance` | Add/update a high-demand appliance |
-| `solar_mind.remove_high_demand_appliance` | Remove an appliance |
-
-### Manual Control (existing)
-
-| Service | Description |
-|---------|-------------|
-| `solar_mind.charge_battery_from_grid` | Force charge from grid |
-| `solar_mind.discharge_battery_to_grid` | Discharge to grid |
-| `solar_mind.set_self_use` | Enable self-use mode |
-| `solar_mind.set_battery_for_house` | Alias for self-use |
-| `solar_mind.set_house_use_grid` | House from grid (preserve battery) |
-| `solar_mind.apply_strategy` | Re-run and apply current strategy |
-
----
-
-## 16. Further Reading
+## 13. Further Reading
 
 - **Home Assistant developer docs:** [developers.home-assistant.io](https://developers.home-assistant.io/)
 - **Creating an integration:** [Creating your first integration](https://developers.home-assistant.io/docs/creating_component_index/)
@@ -986,6 +533,8 @@ Solar Mind tracks prediction accuracy and can learn from mistakes.
 - **Config flow:** [Config entries config flow handler](https://developers.home-assistant.io/docs/config_entries_config_flow_handler)
 - **Fetching data / coordinator:** [Integration fetching data](https://developers.home-assistant.io/docs/integration_fetching_data)
 - **Entity concepts:** [Core entity](https://developers.home-assistant.io/docs/core/entity)
+- **Calendar entity:** [Calendar entity](https://developers.home-assistant.io/docs/core/entity/calendar/)
 - **Solax Modbus (community):** e.g. [homeassistant-solax-modbus](https://github.com/wills106/homeassistant-solax-modbus) — real inverter entities this project is designed to work with.
+- **forecast.solar API:** [forecast.solar](https://forecast.solar/) — solar generation forecasting service
 
-This doc should give you a clear mental model of Home Assistant custom integrations, how this repo is structured, what each entity is for, how solar and Solax concepts map to modes and setpoints, and how Solar Mind drives solar charging and discharging through entities and strategies.
+This doc should give you a clear mental model of Home Assistant custom integrations, how this repo is structured, what each entity is for, how solar and Solax concepts map to modes and setpoints, and how Solar Mind manages pricing, forecasting, and battery control.

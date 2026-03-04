@@ -2,6 +2,8 @@
 
 A Home Assistant custom integration that optimizes your solar PV and battery system using spot electricity prices, fixed tariffs, and solar generation forecasts.
 
+If you're new to the PVE or HA, check [this document](./DOCUMENTATION.md)
+
 ## Features
 
 - **Spot Price Optimization**: Charges battery when electricity prices are low, uses battery when prices are high
@@ -24,6 +26,8 @@ A Home Assistant custom integration that optimizes your solar PV and battery sys
    - **Czech Republic**: [Czech Energy Spot Prices](https://github.com/rnovacek/homeassistant_cz_energy_spot_prices) integration
    - **Nordic/Baltic**: [Nord Pool](https://www.home-assistant.io/integrations/nordpool/) integration
    - **Other**: Any sensor providing hourly prices
+
+ **Weather Entity**  for solar forecast is not needed, the integration using api.forecast.solar API directly
 
 ## Installation
 

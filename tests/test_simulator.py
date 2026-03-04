@@ -1,13 +1,11 @@
 """Tests for the Solax PV Simulator."""
-from __future__ import annotations
-
 from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock
 
 import pytest
 
-from solax_pv_simulator.simulator_core import SolaxSimulatorCore, SimulatorState
-from solax_pv_simulator.const import (
+from custom_components.solax_pv_simulator.simulator_core import SolaxSimulatorCore, SimulatorState
+from custom_components.solax_pv_simulator.const import (
     RemoteControlMode,
     EnergyStorageMode,
     SimulatedWeather,
