@@ -2,7 +2,9 @@
 
 A Home Assistant custom integration that optimizes your solar PV and battery system using spot electricity prices, fixed tariffs, and solar generation forecasts.
 
-If you're new to the PVE or HA, check [this document](./DOCUMENTATION.md)
+If you're new to the PVE or HA, check [this document](./DOCUMENTATION.md).
+
+! This integration is wtill WIP. Some functionaluty might not work as advertised !
 
 ## Features
 
@@ -15,6 +17,22 @@ If you're new to the PVE or HA, check [this document](./DOCUMENTATION.md)
 - **Calendar Integration**: Track charging/discharging events on a calendar entity
 - **Dashboard Cards**: Example ApexCharts dashboard configurations included
 - **Services**: Manual control via HA services for automations
+- **Calendar**: Show the plan (when is planned to charge/discharge/sell etc.) in local calendar entity for transparency. The system will update the plan periodically based on the load, solar prediction changes etc.
+
+### Upcoming features
+- **Load prediction based on the history loads**
+- **Allow triggering high demand devices when energy excess predicted (e.g. heat pump, water heaters)**
+- **Out of home / holidays**
+
+### Screenshots
+
+| Solar Mind sensors | PV generation forecast |
+|-------------------|------------------------|
+| ![Solar Mind sensors](lovelace/screenshots/solar_min_sensors.png) | ![PV estimation](lovelace/screenshots/PV_estimation.png) |
+
+| Charge to SOC status |
+|----------------------|
+| ![Charge to SOC status](lovelace/screenshots/charge_status.png) |
 
 ## Prerequisites
 
