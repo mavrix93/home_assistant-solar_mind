@@ -4,7 +4,7 @@ A Home Assistant custom integration that optimizes your solar PV and battery sys
 
 If you're new to the PVE or HA, check [this document](./DOCUMENTATION.md).
 
-! This integration is wtill WIP. Some functionaluty might not work as advertised !
+**! This integration is still WIP. Some functionaluty might not work as advertised !**
 
 ## Features
 
